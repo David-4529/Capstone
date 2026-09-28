@@ -16,7 +16,7 @@ over the drive's USB connection before running any test.
 | Poles | 4 (synchronous speed 1800 RPM @ 60Hz; matches nameplate slip ≈ 8.3%) |
 | Winding used | **Delta** (208V) — matches this drive's 230V output class; wye (380V) would exceed it |
 | Drive rated output current (VT) | 5.0 A |
-| FLA % | 36% = (1.8A ÷ 5.0A) × 100 |
+| FLA % (informational only) | 36% = (1.8A ÷ 5.0A) × 100 — the lab reference material enters this as a %, but your GSoft2 build takes P05.01 directly in amps, so use 1.8A below, not this percentage |
 
 ## Parameters to set
 
@@ -25,7 +25,7 @@ over the drive's USB connection before running any test.
 | P01.01 | Motor base/rated frequency | 60.00 Hz |
 | P01.02 | Motor rated voltage | 208.0 V |
 | P00.16 | Load selection | 0 (Variable Torque) |
-| P05.01 | Motor FLA, as % of drive rated current | 36% |
+| P05.01 | Motor Full-Load Amps | **1.8 A** (motor nameplate FLA, delta winding — enter directly in amps; confirmed your GSoft2 shows this parameter in A, not %) |
 | P05.03 | Motor rated speed (from nameplate) | 1650 RPM |
 | P05.04 | Number of motor poles | 4 |
 | P01.00 | Maximum output frequency | 60.00 Hz |
