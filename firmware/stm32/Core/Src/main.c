@@ -21,10 +21,11 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "modbus.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdint.h>
+#include <stdbool.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -51,8 +52,6 @@ UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-ModbusMaster vfd;
-
 static uint32_t lastLogMs = 0;
 
 static float knownLoadKg = 0.0f;
@@ -75,6 +74,8 @@ static void MX_GPIO_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
+static uint16_t ModbusCrc16(const uint8_t *buf, uint16_t len);
+static bool ModbusReadHoldingRegister(uint16_t regAddr, uint16_t *value);
 static void UartPrint(const char *s);
 static void HandleLine(const char *line);
 static void LogDataPoint(void);
@@ -117,7 +118,7 @@ int main(void)
   MX_USART1_UART_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
-  Modbus_Init(&vfd, &huart1, RS485_DE_RE_GPIO_Port, RS485_DE_RE_Pin, VFD_SLAVE_ID);
+  HAL_GPIO_WritePin(RS485_DE_RE_GPIO_Port, RS485_DE_RE_Pin, GPIO_PIN_RESET); // start in receive mode
 
   HAL_UART_Receive_IT(&huart2, &rxByte, 1);
 
@@ -283,6 +284,73 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+// Minimal Modbus RTU master, function code 03 (Read Holding Registers), single
+// register reads only - all this project needs (Output Frequency 0x2103, Output
+// Current 0x2104 on the DURApulse GS20-series VFD). Half-duplex RS-485 via the
+// DE/RE-tied MAX485 module, driven by RS485_DE_RE_Pin.
+//
+// Known simplification: assumes every successful response is exactly 7 bytes (a
+// normal 1-register read). A Modbus exception response is shorter (5 bytes), so
+// on an exception this will time out waiting for bytes that never arrive rather
+// than decoding the exception code - it still correctly reports failure, just
+// slower (up to the receive timeout) and without saying why.
+static uint16_t ModbusCrc16(const uint8_t *buf, uint16_t len) {
+  uint16_t crc = 0xFFFF;
+  for (uint16_t pos = 0; pos < len; pos++) {
+    crc ^= (uint16_t)buf[pos];
+    for (int i = 0; i < 8; i++) {
+      if (crc & 0x0001) {
+        crc >>= 1;
+        crc ^= 0xA001;
+      } else {
+        crc >>= 1;
+      }
+    }
+  }
+  return crc;
+}
+
+static bool ModbusReadHoldingRegister(uint16_t regAddr, uint16_t *value) {
+  uint8_t request[8];
+  request[0] = VFD_SLAVE_ID;
+  request[1] = 0x03; // read holding registers
+  request[2] = (regAddr >> 8) & 0xFF;
+  request[3] = regAddr & 0xFF;
+  request[4] = 0x00; // quantity high byte
+  request[5] = 0x01; // quantity = 1 register
+  uint16_t crc = ModbusCrc16(request, 6);
+  request[6] = crc & 0xFF;        // CRC low byte first (Modbus RTU convention)
+  request[7] = (crc >> 8) & 0xFF; // CRC high byte
+
+  HAL_GPIO_WritePin(RS485_DE_RE_GPIO_Port, RS485_DE_RE_Pin, GPIO_PIN_SET);
+  HAL_Delay(1); // let the transceiver settle before driving the line
+  HAL_StatusTypeDef txStatus = HAL_UART_Transmit(&huart1, request, sizeof(request), 100);
+  HAL_Delay(1); // safety margin before releasing the bus back to receive mode
+  HAL_GPIO_WritePin(RS485_DE_RE_GPIO_Port, RS485_DE_RE_Pin, GPIO_PIN_RESET);
+  if (txStatus != HAL_OK) {
+    return false;
+  }
+
+  // slaveId, func, byteCount, data_hi, data_lo, crc_lo, crc_hi
+  uint8_t response[7];
+  if (HAL_UART_Receive(&huart1, response, sizeof(response), 200) != HAL_OK) {
+    return false; // timeout - check wiring (A/B swapped?), baud, or slave ID
+  }
+
+  if (response[0] != VFD_SLAVE_ID || response[1] != 0x03 || response[2] != 2) {
+    return false; // wrong slave ID, exception response, or unexpected byte count
+  }
+
+  uint16_t receivedCrc = ModbusCrc16(response, 5);
+  uint16_t frameCrc = (uint16_t)response[5] | ((uint16_t)response[6] << 8);
+  if (receivedCrc != frameCrc) {
+    return false; // CRC mismatch - usually a framing mismatch (check 8N2 vs 8N1)
+  }
+
+  *value = ((uint16_t)response[3] << 8) | response[4];
+  return true;
+}
+
 static void UartPrint(const char *s) {
   HAL_UART_Transmit(&huart2, (uint8_t *)s, strlen(s), 100);
 }
@@ -330,7 +398,7 @@ static void LogDataPoint(void) {
   uint16_t raw;
   float freqHz;
   const char *freqSource;
-  if (Modbus_ReadHoldingRegister(&vfd, REG_OUTPUT_FREQUENCY, &raw)) {
+  if (ModbusReadHoldingRegister(REG_OUTPUT_FREQUENCY, &raw)) {
     freqHz = raw / 100.0f;
     freqSource = "modbus";
   } else if (haveManualFreq) {
@@ -353,7 +421,7 @@ static void LogDataPoint(void) {
   float currentA;
   const char *currentSource;
   bool haveCurrent;
-  if (Modbus_ReadHoldingRegister(&vfd, REG_OUTPUT_CURRENT, &raw)) {
+  if (ModbusReadHoldingRegister(REG_OUTPUT_CURRENT, &raw)) {
     currentA = raw / 10.0f;
     currentSource = "modbus";
     haveCurrent = true;
