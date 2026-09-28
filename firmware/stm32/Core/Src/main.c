@@ -124,6 +124,7 @@ int main(void)
 
   UartPrint("# millis,freq_hz,freq_source,sync_rpm,actual_rpm,slip,current_a,current_source,known_load_kg\r\n");
   UartPrint("# send 'LOAD <kg>' 'RPM <value>' 'FREQ <hz>' 'CURRENT <amps>' over serial\r\n");
+  UartPrint("# send 'DEBUG 0' to silence raw Modbus TX/RX hex dumps, 'DEBUG 1' to re-enable\r\n");
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -310,6 +311,19 @@ static uint16_t ModbusCrc16(const uint8_t *buf, uint16_t len) {
   return crc;
 }
 
+// Set to false once the RS-485 link is confirmed working, to quiet the log.
+static bool modbusDebug = true;
+
+static void UartPrintHexBytes(const char *label, const uint8_t *buf, uint16_t len) {
+  char line[96];
+  int pos = snprintf(line, sizeof(line), "#   %s:", label);
+  for (uint16_t i = 0; i < len && pos < (int)sizeof(line) - 4; i++) {
+    pos += snprintf(line + pos, sizeof(line) - pos, " %02X", buf[i]);
+  }
+  snprintf(line + pos, sizeof(line) - pos, "\r\n");
+  UartPrint(line);
+}
+
 static bool ModbusReadHoldingRegister(uint16_t regAddr, uint16_t *value) {
   uint8_t request[8];
   request[0] = VFD_SLAVE_ID;
@@ -322,32 +336,60 @@ static bool ModbusReadHoldingRegister(uint16_t regAddr, uint16_t *value) {
   request[6] = crc & 0xFF;        // CRC low byte first (Modbus RTU convention)
   request[7] = (crc >> 8) & 0xFF; // CRC high byte
 
+  if (modbusDebug) {
+    char hdr[48];
+    snprintf(hdr, sizeof(hdr), "# modbus read reg 0x%04X:\r\n", regAddr);
+    UartPrint(hdr);
+    UartPrintHexBytes("TX", request, sizeof(request));
+  }
+
   HAL_GPIO_WritePin(RS485_DE_RE_GPIO_Port, RS485_DE_RE_Pin, GPIO_PIN_SET);
   HAL_Delay(1); // let the transceiver settle before driving the line
   HAL_StatusTypeDef txStatus = HAL_UART_Transmit(&huart1, request, sizeof(request), 100);
   HAL_Delay(1); // safety margin before releasing the bus back to receive mode
   HAL_GPIO_WritePin(RS485_DE_RE_GPIO_Port, RS485_DE_RE_Pin, GPIO_PIN_RESET);
   if (txStatus != HAL_OK) {
+    if (modbusDebug) {
+      UartPrint("#   FAIL: HAL_UART_Transmit did not return HAL_OK\r\n");
+    }
     return false;
   }
 
   // slaveId, func, byteCount, data_hi, data_lo, crc_lo, crc_hi
   uint8_t response[7];
   if (HAL_UART_Receive(&huart1, response, sizeof(response), 200) != HAL_OK) {
+    if (modbusDebug) {
+      UartPrint("#   FAIL: no response within 200ms (check A/B wiring, baud, slave ID)\r\n");
+    }
     return false; // timeout - check wiring (A/B swapped?), baud, or slave ID
   }
 
+  if (modbusDebug) {
+    UartPrintHexBytes("RX", response, sizeof(response));
+  }
+
   if (response[0] != VFD_SLAVE_ID || response[1] != 0x03 || response[2] != 2) {
+    if (modbusDebug) {
+      UartPrint("#   FAIL: unexpected slave ID / function code / byte count (exception response?)\r\n");
+    }
     return false; // wrong slave ID, exception response, or unexpected byte count
   }
 
   uint16_t receivedCrc = ModbusCrc16(response, 5);
   uint16_t frameCrc = (uint16_t)response[5] | ((uint16_t)response[6] << 8);
   if (receivedCrc != frameCrc) {
+    if (modbusDebug) {
+      UartPrint("#   FAIL: CRC mismatch (check 8N2 vs 8N1 framing)\r\n");
+    }
     return false; // CRC mismatch - usually a framing mismatch (check 8N2 vs 8N1)
   }
 
   *value = ((uint16_t)response[3] << 8) | response[4];
+  if (modbusDebug) {
+    char ok[48];
+    snprintf(ok, sizeof(ok), "#   OK: raw value = %u\r\n", *value);
+    UartPrint(ok);
+  }
   return true;
 }
 
@@ -390,6 +432,10 @@ static void HandleLine(const char *line) {
     manualCurrentA = value;
     haveManualCurrent = true;
     snprintf(msg, sizeof(msg), "# output current set to %.2f A\r\n", manualCurrentA);
+    UartPrint(msg);
+  } else if (sscanf(line, "DEBUG %f", &value) == 1) {
+    modbusDebug = (value != 0.0f);
+    snprintf(msg, sizeof(msg), "# modbus debug logging %s\r\n", modbusDebug ? "ON" : "OFF");
     UartPrint(msg);
   }
 }
