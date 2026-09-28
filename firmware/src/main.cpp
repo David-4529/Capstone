@@ -52,17 +52,14 @@ bool readOutputFrequencyHz(float &hzOut) {
   return true;
 }
 
-// TODO(open-item-2): register address is a placeholder until confirmed from the
-// GS20/GS20X manual Ch.5 Status Monitor table. Returns false until then.
+// Reads output current (A) from the VFD over Modbus RTU. Register 0x2104,
+// format XXX.X A -> divide by 10 (not 100 - different scale than frequency).
 bool readOutputCurrentA(float &ampsOut) {
-  if (REG_OUTPUT_CURRENT == 0x0000) {
-    return false;
-  }
   uint8_t result = vfd.readHoldingRegisters(REG_OUTPUT_CURRENT, 1);
   if (result != vfd.ku8MBSuccess) {
     return false;
   }
-  ampsOut = vfd.getResponseBuffer(0) / 100.0f;
+  ampsOut = vfd.getResponseBuffer(0) / 10.0f;
   return true;
 }
 
@@ -177,7 +174,8 @@ void setup() {
   pinMode(PIN_RS485_DE_RE, OUTPUT);
   digitalWrite(PIN_RS485_DE_RE, LOW);
 
-  vfdSerial.begin(MODBUS_BAUD, SERIAL_8N1, PIN_RS485_RX, PIN_RS485_TX);
+  // 8N2: the drive's P09.04 has no 8N1 option for RTU mode - see pins.h note.
+  vfdSerial.begin(MODBUS_BAUD, SERIAL_8N2, PIN_RS485_RX, PIN_RS485_TX);
   vfd.begin(VFD_MODBUS_SLAVE_ID, vfdSerial);
   vfd.preTransmission(preTransmission);
   vfd.postTransmission(postTransmission);

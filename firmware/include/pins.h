@@ -18,12 +18,19 @@ constexpr int PIN_RPM_INPUT = 34;
 constexpr uint8_t VFD_MODBUS_SLAVE_ID = 1; // set to match VFD's configured station address (P09.xx)
 constexpr uint32_t MODBUS_BAUD = 9600; // must match VFD's configured baud rate (P09.xx)
 
-// --- Confirmed Modbus register (GS20/GS20X manual, Ch.5, Status Monitor block) ---
+// --- Confirmed Modbus registers (GS20/GS20X manual, Ch.5, Status Monitor block) ---
+// Output Frequency: format XXX.XX Hz -> divide raw register by 100.
 constexpr uint16_t REG_OUTPUT_FREQUENCY = 0x2103;
+// Output Current: format XXX.X A -> divide raw register by 10 (NOT 100 - different
+// scale than frequency). Cross-checked against two independent sources citing the
+// GS20/GS20X manual's register table; re-verify against the actual PDF if logged
+// current values look off by 10x.
+constexpr uint16_t REG_OUTPUT_CURRENT = 0x2104;
 
-// TODO(open-item-2): confirm from GS20/GS20X manual Ch.5 Status Monitor register table.
-// Placeholder value only - do not trust until verified against the manual.
-constexpr uint16_t REG_OUTPUT_CURRENT = 0x0000;
+// RS-485 serial framing: the drive's P09.04 has no 8N1 option for RTU mode - only
+// 8N2, 8E1, or 8O1. If using no parity, set P09.04 to 8N2 on the drive AND
+// configure the microcontroller UART for 8 data bits, no parity, 2 stop bits
+// (not 8N1) to match.
 
 // --- Motor nameplate constants ---
 constexpr int MOTOR_POLE_COUNT = 4; // Lucas Nulle SE2673-1K7

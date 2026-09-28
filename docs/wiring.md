@@ -73,9 +73,15 @@ spares above — they're on separate terminals.
 
 ---
 
-## 2. ESP32 Data-Acquisition Wiring — Dupont / pin headers
+## 2. Data-Acquisition Wiring — Dupont / pin headers
 
-This is new wiring for the ESP32 logging node, independent of the control cable above.
+⚠ **Controller change pending:** the project has moved from an ESP32 to an
+**STM32 Nucleo-F401RE** (STM32CubeIDE, bare HAL/LL — no Arduino framework). Sections
+2.1 and 2.2 below still reference ESP32 GPIO numbers and haven't been rewritten for the
+Nucleo's pinout yet — treat those two as stale until updated. Section 2.3 (RS-485 ↔ VFD)
+is MCU-agnostic and is now confirmed, not TBD.
+
+This is new wiring for the logging node, independent of the control cable above.
 Dupont jumper kits ship with arbitrary rainbow colors that carry no inherent meaning, so
 the colors below are a **functional convention this project is adopting** — if your kit's
 actual wire colors differ, sleeve or flag both ends with tape/heat-shrink labeled per the
@@ -111,22 +117,31 @@ Uses ESP32 hardware UART2 so UART0 stays free for USB/Serial Monitor logging.
 | `3V3` | `VCC` | Red | See electrical note above |
 | `GND` | `GND` | Black | |
 
-### 2.3 RS-485 transceiver module ↔ VFD
+### 2.3 RS-485 transceiver module ↔ VFD — CONFIRMED
 
-**TBD** — see `docs/open-items.md`, item 3. The GS20-series control terminal block's
-RS-485 labels (commonly `SG-`/`SG+`, or an RJ12 jack requiring an adapter cable) are not
-yet confirmed from the drive's Chapter 5 (Serial Communications) register/wiring table.
-Placeholder pending that:
+Resolved via the GS20/GS20X manual's Chapter 5 register/pinout tables (cross-checked
+against two independent sources). This drive exposes RS-485 two ways that share the same
+signals — a front/side **RJ45 jack**, and terminal-block `SG+`/`SG-` screw terminals:
 
-| Module pin | VFD terminal | Color (convention) | Notes |
-|---|---|---|---|
-| `A` / `Y` | TBD (likely `SG+`) | White | Twisted pair with B/Z line below |
-| `B` / `Z` | TBD (likely `SG-`) | Blue | |
-| `GND` | VFD signal common (if a separate terminal exists) | Black | Only bond if the drive provides an isolated signal-ground terminal — don't tie to earth ground at both ends of a long run (ground loop) |
+| RJ45 pin | Signal | Module pin | Color (convention) | Notes |
+|---|---|---|---|---|
+| 5 | SG+ (RS-485 A) | `A` / `Y` | White | Twisted pair with B/Z line below |
+| 4 | SG- (RS-485 B) | `B` / `Z` | Blue | |
+| 3 or 7 | SGND (common) | `GND` | Black | Single-point ground reference — don't also tie to earth ground at both ends (ground loop) |
+| 1, 2, 6 | Reserved | — | — | Leave unconnected |
+| 8 | +10V (optional accessory keypad power) | — | — | **Do not connect** — this is power for a different accessory, not a signal; connecting it to the transceiver module or MCU could apply unwanted voltage |
+
+If using the RJ45 jack, a cheap RJ45-to-screw-terminal breakout is the simplest way to
+land pins 4/5/3 onto the module without crimping a custom connector. Standard Ethernet
+patch cable is fine per the manual (not a crossover cable).
 
 If the run is long or noisy, terminate the RS-485 bus with a 120Ω resistor across A/B at
-each end (module end and drive end) — confirm against the manual whether the GS20 has
-switchable internal termination before adding an external resistor.
+each end (module end and drive end) — check whether the GS20 has switchable internal
+termination before adding an external resistor.
+
+**Serial framing:** the drive's P09.04 has no 8N1 option for RTU mode — only 8N2, 8E1,
+or 8O1. If running without parity, set the drive to **8N2** and configure the MCU's UART
+to match (8 data bits, no parity, 2 stop bits), not 8N1.
 
 ### 2.4 Shaft RPM input (Lucas Nülle SERVO Machine Test System)
 

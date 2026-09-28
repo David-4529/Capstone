@@ -10,35 +10,24 @@ number, tooth count, Lucas Nülle frame class, or motor part number. **Next step
 direct caliper measurement, or a Lucas Nülle support request.
 Blocks mechanical BOM only — not firmware.
 
-## 2. VFD output current Modbus register address
-`docs/wiring.md` and `firmware/src/main.cpp` assume this lives in the same
-Status Monitor register block (0x21xx range) as Output Frequency (confirmed at
-`0x2103`), per the GS20/GS20X AC Drive User Manual, Chapter 5 (Serial
-Communications). The exact address has not been located yet.
+## 2. VFD output current Modbus register address — RESOLVED
+Register is `0x2104`, format `XXX.X A` (÷10 scaling — different from frequency's ÷100).
+Cross-checked against two independent sources citing the GS20/GS20X manual's register
+table (direct PDF fetch was blocked by network egress rules in this environment; the
+manual itself is at `cdn.automationdirect.com/static/manuals/gs20m/ch5.pdf` if you want
+to eyeball the raw table). `firmware/include/pins.h` and `main.cpp` are updated. The
+`CURRENT <amps>` manual-entry command (read off GSoft2's monitor) stays available as a
+fallback for whenever Modbus isn't wired up.
 
-**Interim workaround in place:** a working USB connection to GSoft2 already exists,
-and GSoft2's live monitor can display Output Current in real time (same monitor
-function used in the lab manual's Section 8.5). `firmware/src/main.cpp` accepts this
-via a `CURRENT <amps>` serial command, read off the GSoft2 monitor by eye. **Next
-step, when convenient:** pull the register address from the Ch.5 table and set
-`REG_OUTPUT_CURRENT` in `firmware/include/pins.h` for automatic logging; until then
-this is not a hard blocker.
-
-## 3. RS-485/Modbus terminal labels on the VFD control terminal block
-The lab reference material for this drive family confirms the drive has a front-panel
-USB port for GSoft2 configuration (which uses RS-485 internally), and gives the main
-power/motor/control terminal labels (see README), but does not cover the terminal-block
-labels for external RS-485 (commonly `SG-`/`SG+`, sometimes an RJ12 jack requiring an
-adapter). Wiring doc marks this `TBD`.
-
-**Interim workaround in place:** since GSoft2 is already connected over USB, its live
-monitor can also display Output Frequency in real time, so the MAX485/RS-485 wiring to
-the drive isn't actually needed yet to collect data. `firmware/src/main.cpp` accepts a
-manually-read frequency via a `FREQ <hz>` serial command, and tags each logged row with
-`freq_source` = `modbus` or `manual` so it's clear which path produced it. **Next step,
-when convenient:** confirm the RS-485 terminal labels from the GS20/GS20X manual, Ch.5,
-before wiring the MAX485 module to the drive for automatic logging; until then this is
-not a hard blocker.
+## 3. RS-485/Modbus terminal labels on the VFD control terminal block — RESOLVED
+This drive exposes RS-485 both via terminal-block `SG+`/`SG-` and via a front/side
+**RJ45 jack** that shares the same signals: pin 5 = SG+ (A), pin 4 = SG- (B), pins 3/7 =
+SGND, pins 1/2/6 reserved, pin 8 = +10V for an optional accessory keypad (don't connect
+that one). Full pinout and wiring is now in `docs/wiring.md` section 2.3. Also resolved:
+the drive's P09.04 has no 8N1 framing option for RTU mode, only 8N2/8E1/8O1 — use 8N2 if
+running without parity, on both the drive and the MCU UART.
+The `FREQ <hz>` manual-entry command stays available as a fallback for whenever Modbus
+isn't wired up.
 
 ## 4. Lucas Nülle SERVO Machine Test System's data interface
 Electrical interface (analog voltage / digital pulse / serial) still not confirmed —
@@ -61,5 +50,12 @@ would need to be replaced with one that has a serial/Bluetooth output.
 ## 6. AC/mains wiring color convention
 User has not yet specified US/NEC vs. IEC color coding for the VFD's 3-phase input
 wiring. `docs/wiring.md` marks all AC/mains conductor colors `TBD` pending that input;
-everything else in the wiring doc (ESP32/MAX485/sensor low-voltage side) is documented
-now since it doesn't depend on that choice.
+everything else in the wiring doc (MAX485/sensor low-voltage side) is documented now
+since it doesn't depend on that choice.
+
+## 7. Controller changed from ESP32 to STM32 Nucleo-F401RE
+Project moved to an STM32F401 Nucleo-64 board, developed in STM32CubeIDE using bare
+HAL/LL C (no Arduino framework, so the `ModbusMaster` Arduino library and all of
+`firmware/src/main.cpp` need to be rewritten — this isn't a small pin remap). Not yet
+started. `docs/wiring.md` sections 2.1/2.2 (ESP32 GPIO numbers) are stale until this is
+done; section 2.3 (RS-485 ↔ VFD pinout) is MCU-agnostic and unaffected.
