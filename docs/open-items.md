@@ -62,3 +62,16 @@ both Output Frequency and Output Current succeed with correct CRCs, and the CSV 
 matches GSoft2's own readings. `docs/wiring.md` sections 2.1/2.2 (ESP32 GPIO numbers)
 are still stale/superseded by the STM32 pinout (PA8/PA9/PA10, see `firmware/stm32/README.md`);
 section 2.3 (RS-485 ↔ VFD pinout) was MCU-agnostic and needed no changes.
+
+## 8. Future enhancements (not started)
+Ideas for after real calibration/validation data is collected:
+- **Local HMI/keypad** on the rig itself (standalone display + button input), so the
+  station doesn't need a laptop tethered via serial to run a test or see live values.
+- **Simple web dashboard** showing live/logged load readings and the model's estimated
+  weight (slip-based and current-based side by side), likely reading off the same CSV
+  stream the STM32 already produces. Would need a way to get that serial stream onto
+  something that can host a web page - options to consider later: a small script on
+  the same PC that already runs the serial monitor, or adding networking to the
+  controller itself (out of scope for the STM32 Nucleo without an added Ethernet/WiFi
+  module - worth deciding whether that's a hardware addition or handled entirely on
+  the PC side).
