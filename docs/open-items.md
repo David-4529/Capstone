@@ -11,13 +11,13 @@ direct caliper measurement, or a Lucas Nülle support request.
 Blocks mechanical BOM only — not firmware.
 
 ## 2. VFD output current Modbus register address — RESOLVED
-Register is `0x2104`, format `XXX.X A` (÷10 scaling — different from frequency's ÷100).
-Cross-checked against two independent sources citing the GS20/GS20X manual's register
-table (direct PDF fetch was blocked by network egress rules in this environment; the
-manual itself is at `cdn.automationdirect.com/static/manuals/gs20m/ch5.pdf` if you want
-to eyeball the raw table). `firmware/include/pins.h` and `main.cpp` are updated. The
-`CURRENT <amps>` manual-entry command (read off GSoft2's monitor) stays available as a
-fallback for whenever Modbus isn't wired up.
+Register is `0x2104`, scaling is **÷100** (same as frequency). The manual-summary-derived
+guess of ÷10 was wrong by 10x — corrected after real hardware testing: raw register
+value 69 matched GSoft2's own live monitor showing "Output Current = 0.69 A" exactly.
+Lesson learned: trust real hardware cross-checks over manual/documentation summaries
+when the two disagree. `firmware/include/pins.h`, the STM32 `main.c`, and the ESP32
+`main.cpp` are all updated. The `CURRENT <amps>` manual-entry command (read off
+GSoft2's monitor) stays available as a fallback for whenever Modbus isn't wired up.
 
 ## 3. RS-485/Modbus terminal labels on the VFD control terminal block — RESOLVED
 This drive exposes RS-485 both via terminal-block `SG+`/`SG-` and via a front/side
@@ -53,9 +53,12 @@ wiring. `docs/wiring.md` marks all AC/mains conductor colors `TBD` pending that 
 everything else in the wiring doc (MAX485/sensor low-voltage side) is documented now
 since it doesn't depend on that choice.
 
-## 7. Controller changed from ESP32 to STM32 Nucleo-F401RE
+## 7. Controller changed from ESP32 to STM32 Nucleo-F401RE — RESOLVED
 Project moved to an STM32F401 Nucleo-64 board, developed in STM32CubeIDE using bare
-HAL/LL C (no Arduino framework, so the `ModbusMaster` Arduino library and all of
-`firmware/src/main.cpp` need to be rewritten — this isn't a small pin remap). Not yet
-started. `docs/wiring.md` sections 2.1/2.2 (ESP32 GPIO numbers) are stale until this is
-done; section 2.3 (RS-485 ↔ VFD pinout) is MCU-agnostic and unaffected.
+HAL/LL C (no Arduino framework). Firmware is written (`firmware/stm32/Core/Src/main.c`,
+self-contained, no separate Modbus library needed) and **confirmed working end-to-end
+on real hardware**: RS-485 wired to the VFD via the MAX485 module, live Modbus reads of
+both Output Frequency and Output Current succeed with correct CRCs, and the CSV output
+matches GSoft2's own readings. `docs/wiring.md` sections 2.1/2.2 (ESP32 GPIO numbers)
+are still stale/superseded by the STM32 pinout (PA8/PA9/PA10, see `firmware/stm32/README.md`);
+section 2.3 (RS-485 ↔ VFD pinout) was MCU-agnostic and needed no changes.

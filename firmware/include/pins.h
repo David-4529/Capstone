@@ -21,10 +21,10 @@ constexpr uint32_t MODBUS_BAUD = 9600; // must match VFD's configured baud rate 
 // --- Confirmed Modbus registers (GS20/GS20X manual, Ch.5, Status Monitor block) ---
 // Output Frequency: format XXX.XX Hz -> divide raw register by 100.
 constexpr uint16_t REG_OUTPUT_FREQUENCY = 0x2103;
-// Output Current: format XXX.X A -> divide raw register by 10 (NOT 100 - different
-// scale than frequency). Cross-checked against two independent sources citing the
-// GS20/GS20X manual's register table; re-verify against the actual PDF if logged
-// current values look off by 10x.
+// Output Current: divide raw register by 100 (same scale as frequency).
+// Confirmed on real hardware against GSoft2's own monitor: raw 69 = 0.69 A.
+// (The manual-text-derived guess of /10 was wrong by 10x - trust this value,
+// not documentation summaries, for any future register scale questions.)
 constexpr uint16_t REG_OUTPUT_CURRENT = 0x2104;
 
 // RS-485 serial framing: the drive's P09.04 has no 8N1 option for RTU mode - only

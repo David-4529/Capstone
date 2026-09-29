@@ -53,13 +53,15 @@ bool readOutputFrequencyHz(float &hzOut) {
 }
 
 // Reads output current (A) from the VFD over Modbus RTU. Register 0x2104,
-// format XXX.X A -> divide by 10 (not 100 - different scale than frequency).
+// confirmed against GSoft2's own monitor on real hardware: raw 69 = 0.69 A,
+// so divide by 100 (same scale as frequency, not /10 as originally assumed
+// from manual text alone).
 bool readOutputCurrentA(float &ampsOut) {
   uint8_t result = vfd.readHoldingRegisters(REG_OUTPUT_CURRENT, 1);
   if (result != vfd.ku8MBSuccess) {
     return false;
   }
-  ampsOut = vfd.getResponseBuffer(0) / 10.0f;
+  ampsOut = vfd.getResponseBuffer(0) / 100.0f;
   return true;
 }
 

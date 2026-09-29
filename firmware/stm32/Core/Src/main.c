@@ -468,7 +468,7 @@ static void LogDataPoint(void) {
   const char *currentSource;
   bool haveCurrent;
   if (ModbusReadHoldingRegister(REG_OUTPUT_CURRENT, &raw)) {
-    currentA = raw / 10.0f;
+    currentA = raw / 100.0f; // confirmed against GSoft2's own monitor: raw 69 = 0.69 A
     currentSource = "modbus";
     haveCurrent = true;
   } else if (haveManualCurrent) {
