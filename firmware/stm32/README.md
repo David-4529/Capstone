@@ -19,8 +19,10 @@ Modbus RTU logic is written directly into it, not a separate module.
    - **System Core → NVIC**: check **USART2 global interrupt** (needed to receive
      typed commands without blocking the main loop).
 3. **Project → Generate Code.**
-4. Open the generated `Core/Src/main.c`, select all (Ctrl+A), and replace it entirely
-   with the contents of this repo's `firmware/stm32/Core/Src/main.c`.
+4. Open the generated `Core/Src/main.c` and copy this repo's code into the matching
+   `/* USER CODE BEGIN ... */` / `/* USER CODE END ... */` sections (PD, PV, PFP, 2,
+   WHILE, 4). Don't replace the whole file or project folder. CubeMX owns everything
+   outside those markers, and your generated init code stays as it is.
 5. Build and flash (Run button — the Nucleo's onboard ST-LINK handles this, no
    separate programmer needed).
 
