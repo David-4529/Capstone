@@ -29,7 +29,7 @@ over the drive's USB connection before running any test.
 | P05.03 | Motor rated speed (from nameplate) | 1650 RPM |
 | P05.04 | Number of motor poles | 4 |
 | P01.00 | Maximum output frequency | 60.00 Hz |
-| P00.20 | Frequency reference source | 2 = external analog input (pot) — see note below |
+| P00.20 | Frequency reference source | **2** = external analog input (pot) — see "Potentiometer speed control" below |
 | P00.21 | Run command source | 1 = external terminals (FWD/REV pushbuttons) |
 | P02.00 | 2-/3-wire control mode | 1 (default — confirm, don't need to change) |
 | P03.00 | AI1 function assignment | 1 (default = Frequency Command — confirm, don't need to change) |
@@ -38,24 +38,61 @@ over the drive's USB connection before running any test.
 this table is taken from documentation for this same motor/drive pairing but hasn't
 been re-checked against your specific unit's firmware/parameter revision.
 
-## Note on P00.20 for calibration testing
+## Potentiometer speed control (current setup)
 
-Your test plan needs precise, repeatable frequency setpoints (10/20/30 Hz for the
-baseline, more for the weighted tests) — that's hard to hit exactly with a hand-turned
-pot. Two options:
+The motor's speed comes from the hand-turned pot, and the FWD/REV pushbuttons start
+and stop it. **The STM32 firmware never commands the motor.** It only *reads* output
+frequency/current over Modbus, so it can run alongside pot control without
+interfering. If the motor runs by itself, or runs for a few seconds and stops, the
+cause is a drive setting, not the firmware.
 
-- **Keep P00.20 = 2 (analog pot)**: turn the pot while watching GSoft2's live Output
-  Frequency monitor, nudging until it reads exactly 10.00 Hz before logging. Works
-  with zero changes, just fiddly.
-- **Switch P00.20 to the drive's digital/keypad frequency source**: lets you type an
-  exact number (10.00, 20.00, 30.00) instead of eyeballing a pot position. This is
-  the more precise, more repeatable option for calibration data. I haven't confirmed
-  the exact numeric value GS20-series uses for this source (the lab material only
-  confirms `2 = external analog input`) — check the P00.20 dropdown in GSoft2, it
-  should list something like "Keypad" or "Digital Setting."
-  **P00.21 (run command source) can stay at 1** either way, so the physical FWD/REV
-  pushbuttons keep working as your start/stop/direction control regardless of where
-  frequency comes from — no need to give that up for precise frequency setting.
+### Settings in GSoft2 (Parameters table, then write to the drive)
+
+| Parameter | Must be | Why |
+|---|---|---|
+| P00.20 Frequency reference source | **2** (external analog input) | Speed follows the pot on +10V/AI1/ACM. Any other value (keypad, RS-485/GSoft2) makes the drive ignore the pot. |
+| P00.21 Run command source | **1** (external terminals) | Start/stop from the FWD/REV pushbuttons. Keypad or RS-485 here lets GSoft2/keypad start the motor instead. |
+| P03.00 AI1 function | **1** (frequency command) | Makes AI1 the speed input. |
+| P01.00 Max output frequency | 60.00 Hz | Pot full-scale (10 V) = this frequency. |
+| Accel / Decel time (P01 group) | ~2 s | Pot changes take effect quickly instead of a slow ramp. |
+
+After writing the parameters, cycle drive power (or confirm in GSoft2 that the values
+stuck). Then flash the updated firmware and open the serial terminal. It runs a
+**`VFDCHECK`** at startup, which reads P00.20, P00.21, and P03.00 back over Modbus,
+prints `OK` / `WRONG` for each, and shows the live pot setpoint (frequency command,
+register 0x2102). Type `VFDCHECK` anytime to re-run it. The check is read-only, so it
+never changes a setting.
+
+### Test procedure
+
+1. Turn the pot fully counter-clockwise (0 Hz).
+2. Press FWD. The motor should stay still or barely turn.
+3. Slowly turn the pot up. Speed should rise smoothly and hold wherever you leave it.
+4. Release FWD (maintained contact: switch it off) to stop.
+
+To hit an exact calibration setpoint (10.00 / 20.00 / 30.00 Hz), turn the pot while
+watching `freq_hz` in the CSV stream or GSoft2's Output Frequency monitor. Wait for
+the value to stop changing before you log, so the reading is at steady state.
+
+### Troubleshooting: "motor runs automatically for a few seconds"
+
+- **P00.20 / P00.21 not at 2 / 1.** If either one points to the keypad or RS-485, a
+  GSoft2 or keypad setpoint and run command take over. Run `VFDCHECK` to see which.
+- **GSoft2 Run/JOG test button used.** A test run from GSoft2 or a JOG command runs
+  briefly at a fixed preset frequency. Use the pushbuttons instead.
+- **Communication timeout.** If run/frequency was coming from RS-485 and the PC
+  stopped talking, the drive stops after the P09 comm-timeout delay. Setting P00.20/
+  P00.21 back to 2/1 removes this dependency.
+- **Pot does nothing.** Check that the wiring matches `docs/wiring.md` §1 (Green →
+  +10V, White → AI1, Red → ACM). Check that AI1 is in voltage mode (0–10 V) in the
+  P03 group. Look at the `frequency command` line from `VFDCHECK` while turning the
+  pot: it should change.
+- **DI3 (preset-speed select) wired up later.** An active preset-speed input
+  overrides the pot. Leave DI3 unassigned while using pot control.
+
+If you'd rather type exact setpoints later instead of using the pot, switch P00.20 to
+the drive's keypad/digital source. P00.21 can stay at 1, so the pushbuttons still
+start and stop the motor.
 
 ## Accel/Decel time — check before your first run
 

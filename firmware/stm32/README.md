@@ -32,6 +32,11 @@ should see the CSV header lines, then a new row every 2 seconds. Typing
 field — check for `manual` in the `freq_source`/`current_source` columns to confirm
 the command was received.
 
+At startup (and whenever you type `VFDCHECK`), the firmware reads P00.20, P00.21, and
+P03.00 from the drive and reports whether it's set up for potentiometer speed
+control. It reads only and never writes to the drive. See `docs/vfd-parameters.md`
+for the settings and troubleshooting.
+
 Once the RS-485 wiring to the VFD (see `docs/wiring.md` section 2.3) is connected,
 those source columns should switch to `modbus` and populate on their own — cross-check
 the values against GSoft2's live monitor at the same moment to confirm they're correct,

@@ -38,6 +38,15 @@
 #define VFD_SLAVE_ID 1          // must match the VFD's P09.00 - check in GSoft2
 #define REG_OUTPUT_FREQUENCY 0x2103
 #define REG_OUTPUT_CURRENT 0x2104
+#define REG_FREQ_COMMAND 0x2102 // frequency setpoint the drive is following (= pot position when P00.20 = 2)
+// Parameter Pxx.yy lives at Modbus address 0xXXYY with xx/yy converted to hex (GS20 manual ch. 5)
+#define PARAM_ADDR(group, num) ((uint16_t)(((group) << 8) | (num)))
+#define REG_P00_20_FREQ_SOURCE PARAM_ADDR(0, 20)
+#define REG_P00_21_RUN_SOURCE PARAM_ADDR(0, 21)
+#define REG_P03_00_AI1_FUNCTION PARAM_ADDR(3, 0)
+#define EXPECTED_FREQ_SOURCE 2 // P00.20 = 2: external analog input (pot on +10V/AI1/ACM)
+#define EXPECTED_RUN_SOURCE 1  // P00.21 = 1: external terminals (FWD/REV pushbuttons)
+#define EXPECTED_AI1_FUNCTION 1 // P03.00 = 1: AI1 is the frequency command
 #define MOTOR_POLE_COUNT 4
 #define LOG_INTERVAL_MS 2000
 /* USER CODE END PD */
@@ -79,6 +88,7 @@ static bool ModbusReadHoldingRegister(uint16_t regAddr, uint16_t *value);
 static void UartPrint(const char *s);
 static void HandleLine(const char *line);
 static void LogDataPoint(void);
+static void CheckVfdPotControl(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -125,6 +135,9 @@ int main(void)
   UartPrint("# millis,freq_hz,freq_source,sync_rpm,actual_rpm,slip,current_a,current_source,known_load_kg\r\n");
   UartPrint("# send 'LOAD <kg>' 'RPM <value>' 'FREQ <hz>' 'CURRENT <amps>' over serial\r\n");
   UartPrint("# send 'DEBUG 0' to silence raw Modbus TX/RX hex dumps, 'DEBUG 1' to re-enable\r\n");
+  UartPrint("# send 'VFDCHECK' to re-check that the drive is set up for pot speed control\r\n");
+
+  CheckVfdPotControl();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -414,7 +427,9 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 static void HandleLine(const char *line) {
   float value;
   char msg[48];
-  if (sscanf(line, "LOAD %f", &value) == 1) {
+  if (strcmp(line, "VFDCHECK") == 0) {
+    CheckVfdPotControl();
+  } else if (sscanf(line, "LOAD %f", &value) == 1) {
     knownLoadKg = value;
     snprintf(msg, sizeof(msg), "# known load set to %.3f kg\r\n", knownLoadKg);
     UartPrint(msg);
@@ -501,6 +516,48 @@ static void LogDataPoint(void) {
            (unsigned long)HAL_GetTick(), freqHz, freqSource, syncRpm, rpmField,
            slipField, currentField, currentSource, knownLoadKg);
   UartPrint(line);
+}
+
+// Read-only check that the drive takes its speed from the pot and its run command
+// from the FWD/REV pushbuttons. This firmware never writes to the drive - it only
+// reports, so any setting flagged here must be changed in GSoft2 (or the keypad).
+static bool CheckVfdParam(const char *name, uint16_t regAddr, uint16_t expected, const char *meaning) {
+  uint16_t value;
+  char msg[128];
+  if (!ModbusReadHoldingRegister(regAddr, &value)) {
+    snprintf(msg, sizeof(msg), "# VFDCHECK %s: could not read (check RS-485 link)\r\n", name);
+    UartPrint(msg);
+    return false;
+  }
+  if (value == expected) {
+    snprintf(msg, sizeof(msg), "# VFDCHECK %s = %u OK (%s)\r\n", name, value, meaning);
+    UartPrint(msg);
+    return true;
+  }
+  snprintf(msg, sizeof(msg), "# VFDCHECK %s = %u WRONG - set it to %u in GSoft2 (%s)\r\n",
+           name, value, expected, meaning);
+  UartPrint(msg);
+  return false;
+}
+
+static void CheckVfdPotControl(void) {
+  UartPrint("# VFDCHECK: verifying drive is set up for potentiometer speed control...\r\n");
+  bool ok = true;
+  ok &= CheckVfdParam("P00.20 freq source", REG_P00_20_FREQ_SOURCE, EXPECTED_FREQ_SOURCE,
+                      "speed from pot on AI1");
+  ok &= CheckVfdParam("P00.21 run source", REG_P00_21_RUN_SOURCE, EXPECTED_RUN_SOURCE,
+                      "start/stop from FWD/REV buttons");
+  ok &= CheckVfdParam("P03.00 AI1 function", REG_P03_00_AI1_FUNCTION, EXPECTED_AI1_FUNCTION,
+                      "AI1 = frequency command");
+
+  uint16_t raw;
+  char msg[96];
+  if (ModbusReadHoldingRegister(REG_FREQ_COMMAND, &raw)) {
+    snprintf(msg, sizeof(msg), "# VFDCHECK frequency command (pot setpoint) = %.2f Hz\r\n", raw / 100.0f);
+    UartPrint(msg);
+  }
+  UartPrint(ok ? "# VFDCHECK: PASS - turn the pot to set speed, FWD/REV to run\r\n"
+               : "# VFDCHECK: FAIL - fix the settings above (see docs/vfd-parameters.md)\r\n");
 }
 /* USER CODE END 4 */
 
