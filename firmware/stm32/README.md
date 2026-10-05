@@ -74,6 +74,18 @@ label in step 2 wasn't set — go back to the Pinout view and add it to PA8, the
 regenerate code (this won't touch your `main.c` edits, CubeMX only touches the parts
 outside the `USER CODE` markers).
 
+## Status LED (no serial needed)
+
+The green user LED (LD2) shows what the firmware is doing:
+
+| LD2 | Meaning |
+|---|---|
+| Slow blink (1 s) | Running, and the VFD is answering Modbus reads |
+| Fast blink (0.1 s) | Running, but the VFD isn't answering. Check RS-485 wiring, VFD power, slave ID |
+| Solid on | Stopped in `Error_Handler` (a peripheral failed to start) |
+| On for ~2 s after reset | Normal: the startup `VFDCHECK` is running |
+| Off / never lights | New firmware isn't running. Check that the right build was flashed |
+
 ## Live data in the STM32CubeIDE console (no serial terminal needed)
 
 Everything printed to the serial port is also sent over the debugger's SWO trace pin

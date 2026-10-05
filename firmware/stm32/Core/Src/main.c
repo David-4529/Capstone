@@ -58,6 +58,14 @@
 #define SAFE_MAX_FREQ_HZ 10.0f
 #define MOTOR_POLE_COUNT 4
 #define LOG_INTERVAL_MS 2000
+// Nucleo's green user LED LD2 (PA5): a status light that works with no serial link.
+// Slow blink (1 s) = running and the VFD is answering Modbus.
+// Fast blink (0.1 s) = running but the VFD is not answering (check RS-485 wiring).
+// Solid on = stopped in Error_Handler. Off = not running at all.
+#define STATUS_LED_PORT GPIOA
+#define STATUS_LED_PIN GPIO_PIN_5
+#define LED_BLINK_OK_MS 1000
+#define LED_BLINK_FAIL_MS 100
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -91,6 +99,8 @@ volatile float liveCurrentA = 0.0f;
 volatile float livePotSetpointHz = 0.0f;
 volatile uint32_t liveModbusOkCount = 0;
 volatile uint32_t liveModbusFailCount = 0;
+static volatile bool lastModbusOk = false;
+static uint32_t lastLedToggleMs = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -146,6 +156,14 @@ int main(void)
   /* USER CODE BEGIN 2 */
   HAL_GPIO_WritePin(RS485_DE_RE_GPIO_Port, RS485_DE_RE_Pin, GPIO_PIN_RESET); // start in receive mode
 
+  GPIO_InitTypeDef ledInit = {0};
+  ledInit.Pin = STATUS_LED_PIN;
+  ledInit.Mode = GPIO_MODE_OUTPUT_PP;
+  ledInit.Pull = GPIO_NOPULL;
+  ledInit.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(STATUS_LED_PORT, &ledInit);
+  HAL_GPIO_WritePin(STATUS_LED_PORT, STATUS_LED_PIN, GPIO_PIN_SET); // on during the startup check
+
   HAL_UART_Receive_IT(&huart2, &rxByte, 1);
 
   UartPrint("# millis,freq_hz,freq_source,sync_rpm,actual_rpm,slip,current_a,current_source,known_load_kg\r\n");
@@ -170,6 +188,12 @@ int main(void)
     if (now - lastLogMs >= LOG_INTERVAL_MS) {
       lastLogMs = now;
       LogDataPoint();
+    }
+
+    now = HAL_GetTick();
+    if (now - lastLedToggleMs >= (lastModbusOk ? LED_BLINK_OK_MS : LED_BLINK_FAIL_MS)) {
+      lastLedToggleMs = now;
+      HAL_GPIO_TogglePin(STATUS_LED_PORT, STATUS_LED_PIN);
     }
     /* USER CODE END WHILE */
 
@@ -383,6 +407,7 @@ static bool ModbusReadHoldingRegister(uint16_t regAddr, uint16_t *value) {
       UartPrint("#   FAIL: HAL_UART_Transmit did not return HAL_OK\r\n");
     }
     liveModbusFailCount++;
+    lastModbusOk = false;
     return false;
   }
 
@@ -393,6 +418,7 @@ static bool ModbusReadHoldingRegister(uint16_t regAddr, uint16_t *value) {
       UartPrint("#   FAIL: no response within 200ms (check A/B wiring, baud, slave ID)\r\n");
     }
     liveModbusFailCount++;
+    lastModbusOk = false;
     return false; // timeout - check wiring (A/B swapped?), baud, or slave ID
   }
 
@@ -405,6 +431,7 @@ static bool ModbusReadHoldingRegister(uint16_t regAddr, uint16_t *value) {
       UartPrint("#   FAIL: unexpected slave ID / function code / byte count (exception response?)\r\n");
     }
     liveModbusFailCount++;
+    lastModbusOk = false;
     return false; // wrong slave ID, exception response, or unexpected byte count
   }
 
@@ -415,11 +442,13 @@ static bool ModbusReadHoldingRegister(uint16_t regAddr, uint16_t *value) {
       UartPrint("#   FAIL: CRC mismatch (check 8N2 vs 8N1 framing)\r\n");
     }
     liveModbusFailCount++;
+    lastModbusOk = false;
     return false; // CRC mismatch - usually a framing mismatch (check 8N2 vs 8N1)
   }
 
   *value = ((uint16_t)response[3] << 8) | response[4];
   liveModbusOkCount++;
+  lastModbusOk = true;
   if (modbusDebug) {
     char ok[48];
     snprintf(ok, sizeof(ok), "#   OK: raw value = %u\r\n", *value);
@@ -658,6 +687,7 @@ void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
+  HAL_GPIO_WritePin(STATUS_LED_PORT, STATUS_LED_PIN, GPIO_PIN_SET); // solid on = stuck here
   __disable_irq();
   while (1)
   {
