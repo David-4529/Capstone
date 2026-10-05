@@ -44,9 +44,18 @@
 #define REG_P00_20_FREQ_SOURCE PARAM_ADDR(0, 20)
 #define REG_P00_21_RUN_SOURCE PARAM_ADDR(0, 21)
 #define REG_P03_00_AI1_FUNCTION PARAM_ADDR(3, 0)
+#define REG_P00_22_STOP_METHOD PARAM_ADDR(0, 22)
+#define REG_P01_10_FREQ_UPPER_LIMIT PARAM_ADDR(1, 10)
+#define REG_P01_12_ACCEL_TIME PARAM_ADDR(1, 12)
+#define REG_P01_13_DECEL_TIME PARAM_ADDR(1, 13)
 #define EXPECTED_FREQ_SOURCE 2 // P00.20 = 2: external analog input (pot on +10V/AI1/ACM)
 #define EXPECTED_RUN_SOURCE 1  // P00.21 = 1: external terminals (FWD/REV pushbuttons)
 #define EXPECTED_AI1_FUNCTION 1 // P03.00 = 1: AI1 is the frequency command
+#define EXPECTED_STOP_METHOD 0  // P00.22 = 0: ramp to stop
+// Highest frequency the cable travel can safely handle right now. VFDCHECK fails if
+// P01.10 is set above this, and the CSV log warns if output frequency exceeds it.
+// Raise it (together with P01.10) only after each step has been run safely.
+#define SAFE_MAX_FREQ_HZ 10.0f
 #define MOTOR_POLE_COUNT 4
 #define LOG_INTERVAL_MS 2000
 /* USER CODE END PD */
@@ -470,6 +479,10 @@ static void LogDataPoint(void) {
     return;
   }
 
+  if (freqHz > SAFE_MAX_FREQ_HZ + 0.5f) {
+    UartPrint("# WARNING: output frequency above SAFE_MAX_FREQ_HZ - release FWD and check P01.10\r\n");
+  }
+
   float syncRpm = 120.0f * freqHz / MOTOR_POLE_COUNT;
 
   bool haveRpm = haveManualRpm;
@@ -518,13 +531,26 @@ static void LogDataPoint(void) {
   UartPrint(line);
 }
 
-// Read-only check that the drive takes its speed from the pot and its run command
-// from the FWD/REV pushbuttons. This firmware never writes to the drive - it only
-// reports, so any setting flagged here must be changed in GSoft2 (or the keypad).
+// Read-only check that the drive takes its speed from the pot, its run command from
+// the FWD/REV pushbuttons, and that the speed cap/ramps are in place. This firmware
+// never writes to the drive - it only reports, so any setting flagged here must be
+// changed in GSoft2.
+static uint8_t vfdReadsTried;
+static uint8_t vfdReadsOk;
+
+static bool ReadVfdRegister(uint16_t regAddr, uint16_t *value) {
+  vfdReadsTried++;
+  if (!ModbusReadHoldingRegister(regAddr, value)) {
+    return false;
+  }
+  vfdReadsOk++;
+  return true;
+}
+
 static bool CheckVfdParam(const char *name, uint16_t regAddr, uint16_t expected, const char *meaning) {
   uint16_t value;
   char msg[128];
-  if (!ModbusReadHoldingRegister(regAddr, &value)) {
+  if (!ReadVfdRegister(regAddr, &value)) {
     snprintf(msg, sizeof(msg), "# VFDCHECK %s: could not read (check RS-485 link)\r\n", name);
     UartPrint(msg);
     return false;
@@ -540,8 +566,25 @@ static bool CheckVfdParam(const char *name, uint16_t regAddr, uint16_t expected,
   return false;
 }
 
+// Accel/decel times assume the drive's default 0.01 s time unit (P01.45 = 0). If the
+// printed seconds are 10x off from GSoft2, the unit is 0.1 s - compare the raw value.
+static bool PrintVfdTime(const char *name, uint16_t regAddr) {
+  uint16_t raw;
+  char msg[96];
+  if (!ReadVfdRegister(regAddr, &raw)) {
+    snprintf(msg, sizeof(msg), "# VFDCHECK %s: could not read (check RS-485 link)\r\n", name);
+    UartPrint(msg);
+    return false;
+  }
+  snprintf(msg, sizeof(msg), "# VFDCHECK %s = %.2f s (raw %u)\r\n", name, raw / 100.0f, raw);
+  UartPrint(msg);
+  return true;
+}
+
 static void CheckVfdPotControl(void) {
   UartPrint("# VFDCHECK: verifying drive is set up for potentiometer speed control...\r\n");
+  vfdReadsTried = 0;
+  vfdReadsOk = 0;
   bool ok = true;
   ok &= CheckVfdParam("P00.20 freq source", REG_P00_20_FREQ_SOURCE, EXPECTED_FREQ_SOURCE,
                       "speed from pot on AI1");
@@ -549,13 +592,31 @@ static void CheckVfdPotControl(void) {
                       "start/stop from FWD/REV buttons");
   ok &= CheckVfdParam("P03.00 AI1 function", REG_P03_00_AI1_FUNCTION, EXPECTED_AI1_FUNCTION,
                       "AI1 = frequency command");
+  ok &= CheckVfdParam("P00.22 stop method", REG_P00_22_STOP_METHOD, EXPECTED_STOP_METHOD,
+                      "ramp to stop");
 
   uint16_t raw;
-  char msg[96];
-  if (ModbusReadHoldingRegister(REG_FREQ_COMMAND, &raw)) {
+  char msg[112];
+  if (ReadVfdRegister(REG_P01_10_FREQ_UPPER_LIMIT, &raw)) {
+    float limitHz = raw / 100.0f;
+    bool limitOk = limitHz > 0.0f && limitHz <= SAFE_MAX_FREQ_HZ;
+    snprintf(msg, sizeof(msg), "# VFDCHECK P01.10 freq upper limit = %.2f Hz %s (safe max %.2f Hz)\r\n",
+             limitHz, limitOk ? "OK" : "TOO HIGH", SAFE_MAX_FREQ_HZ);
+    UartPrint(msg);
+    ok &= limitOk;
+  } else {
+    UartPrint("# VFDCHECK P01.10 freq upper limit: could not read (check RS-485 link)\r\n");
+    ok = false;
+  }
+  ok &= PrintVfdTime("P01.12 accel time", REG_P01_12_ACCEL_TIME);
+  ok &= PrintVfdTime("P01.13 decel time", REG_P01_13_DECEL_TIME);
+
+  if (ReadVfdRegister(REG_FREQ_COMMAND, &raw)) {
     snprintf(msg, sizeof(msg), "# VFDCHECK frequency command (pot setpoint) = %.2f Hz\r\n", raw / 100.0f);
     UartPrint(msg);
   }
+  snprintf(msg, sizeof(msg), "# VFDCHECK modbus link: %u/%u reads OK\r\n", vfdReadsOk, vfdReadsTried);
+  UartPrint(msg);
   UartPrint(ok ? "# VFDCHECK: PASS - turn the pot to set speed, FWD/REV to run\r\n"
                : "# VFDCHECK: FAIL - fix the settings above (see docs/vfd-parameters.md)\r\n");
 }

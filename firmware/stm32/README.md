@@ -32,10 +32,35 @@ should see the CSV header lines, then a new row every 2 seconds. Typing
 field — check for `manual` in the `freq_source`/`current_source` columns to confirm
 the command was received.
 
-At startup (and whenever you type `VFDCHECK`), the firmware reads P00.20, P00.21, and
-P03.00 from the drive and reports whether it's set up for potentiometer speed
-control. It reads only and never writes to the drive. See `docs/vfd-parameters.md`
-for the settings and troubleshooting.
+## Verifying it reads from the VFD (`VFDCHECK`)
+
+At startup, and whenever you type `VFDCHECK`, the firmware reads the drive's control
+settings over Modbus. It reads only and never writes to the drive. With the drive
+powered and RS-485 connected, you should see this (type `DEBUG 0` first to hide the
+raw hex dumps):
+
+```
+# VFDCHECK P00.20 freq source = 2 OK (speed from pot on AI1)
+# VFDCHECK P00.21 run source = 1 OK (start/stop from FWD/REV buttons)
+# VFDCHECK P03.00 AI1 function = 1 OK (AI1 = frequency command)
+# VFDCHECK P00.22 stop method = 0 OK (ramp to stop)
+# VFDCHECK P01.10 freq upper limit = 10.00 Hz OK (safe max 10.00 Hz)
+# VFDCHECK P01.12 accel time = 1.50 s (raw 150)
+# VFDCHECK P01.13 decel time = 1.50 s (raw 150)
+# VFDCHECK frequency command (pot setpoint) = 0.00 Hz
+# VFDCHECK modbus link: 8/8 reads OK
+# VFDCHECK: PASS - turn the pot to set speed, FWD/REV to run
+```
+
+Each value should match what GSoft2 shows for that parameter. If the accel/decel times
+are 10x off (e.g. 15.00 s), the drive's time unit is 0.1 s and the raw value is still
+correct. With the motor stopped, turn the pot and re-run `VFDCHECK`: the frequency
+command line should change. Then run the motor and check that `freq_hz` and
+`current_a` in the CSV rows match GSoft2's live monitor. The log prints a `WARNING` if
+output frequency ever goes above `SAFE_MAX_FREQ_HZ` (10 Hz by default).
+
+`0/8 reads OK` means no reply from the drive. Check the A/B wiring, 9600 baud 8N2, and
+that the slave ID matches P09.00.
 
 Once the RS-485 wiring to the VFD (see `docs/wiring.md` section 2.3) is connected,
 those source columns should switch to `modbus` and populate on their own — cross-check

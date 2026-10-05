@@ -54,7 +54,14 @@ cause is a drive setting, not the firmware.
 | P00.21 Run command source | **1** (external terminals) | Start/stop from the FWD/REV pushbuttons. Keypad or RS-485 here lets GSoft2/keypad start the motor instead. |
 | P03.00 AI1 function | **1** (frequency command) | Makes AI1 the speed input. |
 | P01.00 Max output frequency | 60.00 Hz | Pot full-scale (10 V) = this frequency. |
-| Accel / Decel time (P01 group) | ~2 s | Pot changes take effect quickly instead of a slow ramp. |
+| P01.10 Output frequency upper limit | **10 Hz** (set) | Caps speed even with the pot at full. Raise to 20/30 Hz only after each step is run safely, and raise `SAFE_MAX_FREQ_HZ` in `main.c` to match. |
+| P01.12 / P01.13 Accel / Decel time 1 | **1.5 s** (set) | Gentle start; quick stop when FWD is released. |
+| P00.22 Stop method | **0** = ramp to stop (set) | Drive brakes the motor down instead of coasting. |
+
+⚠ The pot alone spans 0–60 Hz, which runs out the cable in seconds. Keep P01.10 capped,
+turn the pot fully counter-clockwise before pressing FWD, and add an end-of-travel limit
+switch on the spare DI4 pair as a hardware stop. The drive has no brake, so make sure
+a hanging load is supported when the motor stops.
 
 After writing the parameters, cycle drive power (or confirm in GSoft2 that the values
 stuck). Then flash the updated firmware and open the serial terminal. It runs a
