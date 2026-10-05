@@ -84,6 +84,13 @@ static uint8_t rxByte;
 static char lineBuf[64];
 static volatile uint8_t lineLen = 0;
 static volatile bool lineReady = false;
+
+// Latest readings, for watching in the debugger's Live Expressions view.
+volatile float liveFreqHz = 0.0f;
+volatile float liveCurrentA = 0.0f;
+volatile float livePotSetpointHz = 0.0f;
+volatile uint32_t liveModbusOkCount = 0;
+volatile uint32_t liveModbusFailCount = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -333,8 +340,9 @@ static uint16_t ModbusCrc16(const uint8_t *buf, uint16_t len) {
   return crc;
 }
 
-// Set to false once the RS-485 link is confirmed working, to quiet the log.
-static bool modbusDebug = true;
+// Raw TX/RX hex dumps. Off by default now that the RS-485 link is confirmed working;
+// send 'DEBUG 1' over the serial port to turn them back on.
+static bool modbusDebug = false;
 
 static void UartPrintHexBytes(const char *label, const uint8_t *buf, uint16_t len) {
   char line[96];
@@ -374,6 +382,7 @@ static bool ModbusReadHoldingRegister(uint16_t regAddr, uint16_t *value) {
     if (modbusDebug) {
       UartPrint("#   FAIL: HAL_UART_Transmit did not return HAL_OK\r\n");
     }
+    liveModbusFailCount++;
     return false;
   }
 
@@ -383,6 +392,7 @@ static bool ModbusReadHoldingRegister(uint16_t regAddr, uint16_t *value) {
     if (modbusDebug) {
       UartPrint("#   FAIL: no response within 200ms (check A/B wiring, baud, slave ID)\r\n");
     }
+    liveModbusFailCount++;
     return false; // timeout - check wiring (A/B swapped?), baud, or slave ID
   }
 
@@ -394,6 +404,7 @@ static bool ModbusReadHoldingRegister(uint16_t regAddr, uint16_t *value) {
     if (modbusDebug) {
       UartPrint("#   FAIL: unexpected slave ID / function code / byte count (exception response?)\r\n");
     }
+    liveModbusFailCount++;
     return false; // wrong slave ID, exception response, or unexpected byte count
   }
 
@@ -403,10 +414,12 @@ static bool ModbusReadHoldingRegister(uint16_t regAddr, uint16_t *value) {
     if (modbusDebug) {
       UartPrint("#   FAIL: CRC mismatch (check 8N2 vs 8N1 framing)\r\n");
     }
+    liveModbusFailCount++;
     return false; // CRC mismatch - usually a framing mismatch (check 8N2 vs 8N1)
   }
 
   *value = ((uint16_t)response[3] << 8) | response[4];
+  liveModbusOkCount++;
   if (modbusDebug) {
     char ok[48];
     snprintf(ok, sizeof(ok), "#   OK: raw value = %u\r\n", *value);
@@ -415,8 +428,15 @@ static bool ModbusReadHoldingRegister(uint16_t regAddr, uint16_t *value) {
   return true;
 }
 
+// Every message goes to both the ST-LINK virtual COM port (PuTTY/Tera Term) and the
+// debugger's SWV ITM Data Console in STM32CubeIDE (via the SWO pin, PB3), so live
+// data can be watched in the IDE with no serial terminal. ITM output is skipped
+// unless a debugger has SWV tracing enabled.
 static void UartPrint(const char *s) {
   HAL_UART_Transmit(&huart2, (uint8_t *)s, strlen(s), 100);
+  for (const char *c = s; *c != '\0'; c++) {
+    ITM_SendChar((uint32_t)*c);
+  }
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
@@ -479,6 +499,11 @@ static void LogDataPoint(void) {
     return;
   }
 
+  liveFreqHz = freqHz;
+  if (ModbusReadHoldingRegister(REG_FREQ_COMMAND, &raw)) {
+    livePotSetpointHz = raw / 100.0f;
+  }
+
   if (freqHz > SAFE_MAX_FREQ_HZ + 0.5f) {
     UartPrint("# WARNING: output frequency above SAFE_MAX_FREQ_HZ - release FWD and check P01.10\r\n");
   }
@@ -506,6 +531,9 @@ static void LogDataPoint(void) {
   } else {
     currentSource = "NA";
     haveCurrent = false;
+  }
+  if (haveCurrent) {
+    liveCurrentA = currentA;
   }
 
   char rpmField[16];

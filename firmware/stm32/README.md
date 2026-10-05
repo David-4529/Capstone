@@ -73,3 +73,31 @@ If `RS485_DE_RE_Pin` / `RS485_DE_RE_GPIO_Port` don't resolve at build time, the 
 label in step 2 wasn't set — go back to the Pinout view and add it to PA8, then
 regenerate code (this won't touch your `main.c` edits, CubeMX only touches the parts
 outside the `USER CODE` markers).
+
+## Live data in the STM32CubeIDE console (no serial terminal needed)
+
+Everything printed to the serial port is also sent over the debugger's SWO trace pin
+(PB3, connected to the ST-LINK by default on the Nucleo-F401RE). It shows up in
+STM32CubeIDE's **SWV ITM Data Console**. This view only displays output: commands
+like `VFDCHECK` still need a serial terminal. Instead, press the Nucleo's reset
+button to re-run the startup `VFDCHECK`. Raw Modbus hex dumps are off by default.
+
+One-time setup:
+1. **Run → Debug Configurations…** → your project → **Debugger** tab → under
+   *Serial Wire Viewer (SWV)* tick **Enable**, set **Core Clock = 16.0 MHz** (this
+   firmware runs on the 16 MHz HSI with no PLL) → Apply.
+2. Start debugging (bug icon). When it stops at `main()`:
+   **Window → Show View → SWV → SWV ITM Data Console**.
+3. In that console click **Configure trace** (the wrench icon) → tick **ITM Stimulus
+   Port 0** → OK.
+4. Click **Start Trace** (the red record button), *then* press **Resume (F8)**.
+
+The CSV header, the `VFDCHECK` result, and a new data row every 2 s should appear. If
+it stays blank, check that Core Clock is 16.0 MHz and that trace was started before
+resuming.
+
+Alternatively, add these globals in the debugger's **Live Expressions** view (Window
+→ Show View → Live Expressions) to watch values update while the program runs:
+`liveFreqHz`, `liveCurrentA`, `livePotSetpointHz`, `liveModbusOkCount`,
+`liveModbusFailCount`. `liveModbusOkCount` climbing while `liveModbusFailCount` stays
+at 0 confirms the board is reading the VFD.
