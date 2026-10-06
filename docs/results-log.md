@@ -15,6 +15,16 @@ Slip = (sync RPM − shaft RPM) / sync RPM. Slip RPM = sync RPM − shaft RPM.
 | 2136 | 2 | up? | 4.85 | 145.4 | 0.814 | ~137.5 (137–138) | 7.9 | 0.054 |
 | 2136 | — | down | ~4.85 | ~145.4 | — | ~141 | ~4.4 | ~0.030 |
 
+| 2139 | 1 | up* | 6.36 | 190.7 | 0.700 | ~180 | 10.7 | 0.056 |
+| 2139 | 2 | down* | 6.36 | 190.7 | 0.660 | ~186 | 4.7 | 0.025 |
+| 2139 | 3 | up* | 6.35 | 190.5 | 0.692 | ~180 | 10.5 | 0.055 |
+| 2139 | 4 | down* | 6.36 | 190.7 | 0.641 | ~186 | 4.7 | 0.025 |
+| 2139 | 5 | up* | 6.35 | 190.6 | 0.720 | ~180 | 10.6 | 0.056 |
+
+2139: one RPM reading per direction was given for the whole session. Up/down were
+inferred from the alternating current (odd runs higher). Up current averages
+0.704 A, down 0.651 A.
+
 The 2136 session logged only one full run (run 2, 9.7 s). The down reading has no
 matching logged run, so its sync RPM is assumed equal to run 2's.
 
