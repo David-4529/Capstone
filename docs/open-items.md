@@ -63,7 +63,19 @@ matches GSoft2's own readings. `docs/wiring.md` sections 2.1/2.2 (ESP32 GPIO num
 are still stale/superseded by the STM32 pinout (PA8/PA9/PA10, see `firmware/stm32/README.md`);
 section 2.3 (RS-485 ↔ VFD pinout) was MCU-agnostic and needed no changes.
 
-## 8. Future enhancements (not started)
+## 8. Manual pot speed control with speed cap — RESOLVED
+Motor speed now comes from the hand pot (P00.20 = 2) and start/stop from the FWD/REV
+pushbuttons (P00.21 = 1). Speed is capped at 10 Hz (P01.10) with 1.5 s accel/decel
+and ramp-to-stop, after an uncapped pot run exhausted the cable travel. **Confirmed on
+hardware:** the startup `VFDCHECK` read all 8 registers back correctly over Modbus.
+With the pot at 11.88 Hz, output held at exactly 10.00 Hz, so the cap works. Below
+the cap, output followed the pot (ramped 0 → 9.4 Hz), and no-load current was about
+0.65 A. Live data is visible in STM32CubeIDE's SWV ITM Data Console (SYS Debug =
+Trace Asynchronous Sw, ITM port 0 enabled).
+Still recommended: an end-of-travel limit switch on the spare DI4 pair as a hardware
+stop.
+
+## 9. Future enhancements (not started)
 Ideas for after real calibration/validation data is collected:
 - **Local HMI/keypad** on the rig itself (standalone display + button input), so the
   station doesn't need a laptop tethered via serial to run a test or see live values.
