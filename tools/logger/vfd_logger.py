@@ -29,6 +29,7 @@ import re
 import sys
 import threading
 import time
+import traceback
 
 try:
     import serial
@@ -66,6 +67,19 @@ def find_stlink_port():
 
 def now_str():
     return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+
+
+def report_crash(context):
+    # Prints the error and saves it to crash_log.txt next to the script, so a problem
+    # can be diagnosed instead of the window just closing.
+    details = traceback.format_exc()
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "crash_log.txt")
+    try:
+        with open(path, "a", encoding="utf-8") as f:
+            f.write(f"--- {now_str()} {context}\n{details}\n")
+    except OSError:
+        pass
+    print(f"\n!! ERROR {context}\n{details}!! saved to {path} - send this to Claude\n")
 
 
 def kg_label(kg):
@@ -145,7 +159,10 @@ class Logger:
                 raw, buf = buf.split(b"\n", 1)
                 line = raw.decode("utf-8", errors="replace").strip()
                 if line:
-                    self.handle_line(line)
+                    try:
+                        self.handle_line(line)
+                    except Exception:
+                        report_crash(f"while handling the line: {line!r}")
 
     def handle_line(self, line):
         with self.lock:
@@ -327,7 +344,10 @@ def main():
                 break
             if text.strip().upper() in ("QUIT", "EXIT"):
                 break
-            log.send(text)
+            try:
+                log.send(text)
+            except Exception:
+                report_crash(f"while sending {text!r}")
     except KeyboardInterrupt:
         pass
     finally:
@@ -338,4 +358,10 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except SystemExit:
+        raise
+    except Exception:
+        report_crash("in the logger")
+        sys.exit(1)
