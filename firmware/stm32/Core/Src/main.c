@@ -98,7 +98,8 @@ static float manualCurrentA = 0.0f;
 static bool haveManualCurrent = false;
 
 static uint8_t rxByte;
-static char lineBuf[64];
+static char lineBuf[64];      // line being typed (filled by the UART interrupt)
+static char cmdBuf[64];       // last complete line, handed to the main loop
 static volatile uint8_t lineLen = 0;
 static volatile bool lineReady = false;
 
@@ -206,9 +207,8 @@ int main(void)
   while (1)
   {
     if (lineReady) {
+      HandleLine(cmdBuf);
       lineReady = false;
-      HandleLine(lineBuf);
-      lineLen = 0;
     }
 
     uint32_t now = HAL_GetTick();
@@ -498,10 +498,14 @@ static void UartPrint(const char *s) {
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
   if (huart->Instance == USART2) {
     if (rxByte == '\n' || rxByte == '\r') {
-      if (lineLen > 0) {
+      // Enter sends \r\n: the line ends on the first one, and resetting lineLen
+      // here means the second one is ignored instead of repeating the command.
+      if (lineLen > 0 && !lineReady) {
         lineBuf[lineLen] = '\0';
+        memcpy(cmdBuf, lineBuf, lineLen + 1);
         lineReady = true;
       }
+      lineLen = 0;
     } else if (lineLen < sizeof(lineBuf) - 1) {
       lineBuf[lineLen++] = (char)rxByte;
     }
