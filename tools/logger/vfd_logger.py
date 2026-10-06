@@ -36,13 +36,14 @@ except ImportError:
 # at startup ("# millis,freq_hz,...") if the logger sees it.
 DEFAULT_COLUMNS = [
     "millis", "freq_hz", "freq_source", "sync_rpm", "actual_rpm", "slip",
-    "current_a", "current_source", "known_load_kg", "test_id",
+    "current_a", "current_source", "known_load_kg", "test_id", "steady",
 ]
 SUMMARY_COLUMNS = [
     "pc_time", "test_id", "load_kg", "rows", "steady_rows", "avg_freq_hz",
     "avg_current_a", "avg_rpm", "avg_slip", "file",
 ]
 STLINK_VID = 0x0483
+RUNNING_FREQ_HZ = 0.5  # output frequency above this counts as "motor running"
 NO_REPLY_WARNING_S = 2.0
 
 TEST_START_RE = re.compile(r"^# TEST (\d+) START load_kg=([\d.]+)")
@@ -68,8 +69,11 @@ def kg_label(load_kg):
 
 
 class Logger:
-    def __init__(self, ser, out_dir):
+    def __init__(self, ser, out_dir, max_run_s):
         self.ser = ser
+        self.max_run_s = max_run_s
+        self.run_start = None
+        self.run_warned = False
         self.out_dir = out_dir
         self.columns = list(DEFAULT_COLUMNS)
         self.lock = threading.Lock()
@@ -131,6 +135,7 @@ class Logger:
                 return  # partial/garbled line - kept in session_log.txt only
             self.all_rows.writerow([stamp] + fields)
             self.all_rows_file.flush()
+            self.track_run(dict(zip(self.columns, fields)))
 
             if self.test_writer is not None:
                 row = dict(zip(self.columns, fields))
@@ -138,6 +143,24 @@ class Logger:
                     self.test_writer.writerow([stamp] + fields)
                     self.test_file.flush()
                     self.test_rows += 1
+
+    def track_run(self, row):
+        # Times each motor run from the data stream, so you know how many seconds of
+        # cable travel you have, and beeps when a run passes --max-run seconds.
+        try:
+            running = float(row.get("freq_hz", "0")) > RUNNING_FREQ_HZ
+        except ValueError:
+            return
+        t = time.monotonic()
+        if running and self.run_start is None:
+            self.run_start = t
+            self.run_warned = False
+        elif running and not self.run_warned and t - self.run_start >= self.max_run_s:
+            self.run_warned = True
+            print(f"\a!!! {t - self.run_start:.1f} s running - RELEASE THE BUTTON (--max-run {self.max_run_s:g})")
+        elif not running and self.run_start is not None:
+            print(f">> run lasted {t - self.run_start:.1f} s")
+            self.run_start = None
 
     def handle_comment(self, line, stamp):
         if line.startswith("# millis,"):
@@ -218,6 +241,8 @@ def main():
     ap.add_argument("--port", help="serial port, e.g. COM5 (default: auto-detect ST-LINK)")
     ap.add_argument("--baud", type=int, default=115200)
     ap.add_argument("--out", default="data", help="folder for session folders (default: ./data)")
+    ap.add_argument("--max-run", type=float, default=3.0,
+                    help="beep and warn when the motor has run this many seconds (default: 3.0)")
     args = ap.parse_args()
 
     port = args.port or find_stlink_port()
@@ -230,9 +255,10 @@ def main():
         sys.exit(f"Couldn't open {port}: {e}\n"
                  f"Close anything else using it (PuTTY, Tera Term) and try again.")
 
-    log = Logger(ser, out_dir)
+    log = Logger(ser, out_dir, args.max_run)
     print(f">> connected to {port} at {args.baud} baud, saving to {out_dir}")
     print(">> commands: TEST (asks for weight)  RPM <value>  STOP  VFDCHECK  QUIT")
+    print(f">> run-time warning at {args.max_run:g} s (change with --max-run)")
     print(">> tip: press the Nucleo's reset button to see the startup VFDCHECK\n")
 
     reader = threading.Thread(target=log.reader_loop, daemon=True)

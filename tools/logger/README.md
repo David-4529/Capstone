@@ -22,21 +22,36 @@ STM32CubeIDE debugger and SWV console can stay open: they use a different connec
 
 ## Running a test
 
+Cable travel is only 64 in, so each run lasts a few seconds (see "Run time" below).
+The board logs a row every 0.25 s and marks rows where the speed is constant
+(`steady` = 1). You can type RPM **after** releasing the button.
+
 ```
 TEST                 board asks: "what weight are you using?"
-2.5                  weight in kg (0 = no load) -> TEST 1 START, new CSV opened
-                     press FWD, turn the pot up, wait for freq_hz/current_a to settle
-RPM 285              shaft RPM from the SERVO display -> slip column fills in
-                     (type RPM again if the display changes)
+0                    weight in kg (0 = no load) -> TEST 1 START, new CSV opened
+                     hold UP; read the RPM on the SERVO display; release before the
+                     cable runs out (the logger beeps at --max-run seconds)
+RPM 290              the RPM you read on the display
 STOP                 TEST 1 END + averages -> CSV closed, summary.csv updated
+                     lower the cable back down (not part of the test), repeat
 QUIT                 exit the logger
 ```
 
 Other commands: `VFDCHECK`, `CANCEL` (at the weight prompt), `DEBUG 1`/`DEBUG 0`.
 
-The averages printed at `STOP` (frequency, current, RPM, slip) only count rows logged
-**after** you typed `RPM`. Type it once the readings have settled, so ramp-up rows
-don't skew the averages.
+The averages printed at `STOP` use only the steady rows at the highest speed held
+during the test. Rows from the ramp-up, pauses while turning the pot, and slowing down
+are left out. Slip in the summary = (average synchronous RPM − typed RPM) / average
+synchronous RPM.
+
+## Run time
+
+The drum (`Drum_Rev_0`) is hourglass-shaped and the cable winds on its 15.9 mm
+waist, so one turn moves about 1.96 in of cable. At 10 Hz (about 290 RPM, driven
+directly) that's about 9.5 in/s, and 64 in lasts about 6.7 s. The effective diameter
+grows as cable piles up, so plan on 4–5 s. The logger prints `run lasted X s` after
+every run and beeps at `--max-run` (default 3.0 s). On the first no-load run, measure
+how far the cable moved, then adjust: `run_logger.bat --max-run 4`.
 
 ## Output files
 

@@ -57,7 +57,16 @@
 // Raise it (together with P01.10) only after each step has been run safely.
 #define SAFE_MAX_FREQ_HZ 10.0f
 #define MOTOR_POLE_COUNT 4
-#define LOG_INTERVAL_MS 2000
+// 250 ms so a run of only a few seconds (64 in of cable travel) still logs plenty of
+// rows. Each row's 3 Modbus reads take ~75 ms at 9600 baud.
+#define LOG_INTERVAL_MS 250
+// A row counts as steady when output frequency is above this and moved no more
+// than STEADY_FREQ_TOL_HZ since the previous row (i.e. not ramping).
+#define STEADY_MIN_FREQ_HZ 0.5f
+#define STEADY_FREQ_TOL_HZ 0.05f
+// Test averages use only the highest steady speed held during the test. Steady rows
+// more than this below it (pauses while turning the pot up, slowing down) are skipped.
+#define PLATEAU_TOL_HZ 0.2f
 // Nucleo's green user LED LD2 (PA5): a status light that works with no serial link.
 // Slow blink (1 s) = running and the VFD is answering Modbus.
 // Fast blink (0.1 s) = running but the VFD is not answering (check RS-485 wiring).
@@ -107,13 +116,14 @@ static uint16_t testId = 0;
 static bool testActive = false;
 static bool awaitingWeight = false;
 static uint32_t testRows = 0;
-// Steady-state averages only count rows logged after RPM was entered, since the
-// operator types RPM once freq/current have settled.
+// Steady-state averages only count rows where the motor was running at a constant
+// speed (see STEADY_*). RPM can be typed any time before STOP - even after the motor
+// has stopped - and the summary slip uses it with the steady-state average speed.
 static uint32_t testSteadyRows = 0;
 static float sumFreqHz = 0.0f;
 static float sumCurrentA = 0.0f;
-static float sumActualRpm = 0.0f;
-static float sumSlip = 0.0f;
+static float sumSyncRpm = 0.0f;
+static float prevFreqHz = 0.0f;
 static uint32_t lastLedToggleMs = 0;
 /* USER CODE END PV */
 
@@ -182,7 +192,7 @@ int main(void)
 
   HAL_UART_Receive_IT(&huart2, &rxByte, 1);
 
-  UartPrint("# millis,freq_hz,freq_source,sync_rpm,actual_rpm,slip,current_a,current_source,known_load_kg,test_id\r\n");
+  UartPrint("# millis,freq_hz,freq_source,sync_rpm,actual_rpm,slip,current_a,current_source,known_load_kg,test_id,steady\r\n");
   UartPrint("# send 'LOAD <kg>' 'RPM <value>' 'FREQ <hz>' 'CURRENT <amps>' over serial\r\n");
   UartPrint("# send 'DEBUG 0' to silence raw Modbus TX/RX hex dumps, 'DEBUG 1' to re-enable\r\n");
   UartPrint("# send 'VFDCHECK' to re-check that the drive is set up for pot speed control\r\n");
@@ -577,31 +587,42 @@ static void StartTest(float loadKg) {
   testSteadyRows = 0;
   sumFreqHz = 0.0f;
   sumCurrentA = 0.0f;
-  sumActualRpm = 0.0f;
-  sumSlip = 0.0f;
+  sumSyncRpm = 0.0f;
   snprintf(msg, sizeof(msg), "# TEST %u START load_kg=%.3f\r\n", testId, knownLoadKg);
   UartPrint(msg);
-  UartPrint("# run the motor up, wait for freq_hz/current_a to settle, then type RPM <value>\r\n");
-  UartPrint("# from the SERVO display. Type STOP when the test is done.\r\n");
+  UartPrint("# hold UP at a steady speed, read the RPM on the SERVO display, release before\r\n");
+  UartPrint("# the cable runs out, then type RPM <value> and STOP.\r\n");
 }
 
 static void EndTest(void) {
   char msg[200];
+  char freqField[12] = "NA";
+  char currentField[12] = "NA";
+  char rpmField[12] = "NA";
+  char slipField[12] = "NA";
   testActive = false;
   if (testSteadyRows > 0) {
     float n = (float)testSteadyRows;
-    snprintf(msg, sizeof(msg),
-             "# TEST %u END load_kg=%.3f rows=%lu steady_rows=%lu avg_freq_hz=%.2f avg_current_a=%.3f avg_rpm=%.1f avg_slip=%.4f\r\n",
-             testId, knownLoadKg, (unsigned long)testRows, (unsigned long)testSteadyRows,
-             sumFreqHz / n, sumCurrentA / n, sumActualRpm / n, sumSlip / n);
-  } else {
-    snprintf(msg, sizeof(msg),
-             "# TEST %u END load_kg=%.3f rows=%lu steady_rows=0 avg_freq_hz=NA avg_current_a=NA avg_rpm=NA avg_slip=NA\r\n",
-             testId, knownLoadKg, (unsigned long)testRows);
+    float avgSync = sumSyncRpm / n;
+    snprintf(freqField, sizeof(freqField), "%.2f", sumFreqHz / n);
+    snprintf(currentField, sizeof(currentField), "%.3f", sumCurrentA / n);
+    if (haveManualRpm && avgSync > 0.0f) {
+      snprintf(slipField, sizeof(slipField), "%.4f", (avgSync - manualActualRpm) / avgSync);
+    }
   }
+  if (haveManualRpm) {
+    snprintf(rpmField, sizeof(rpmField), "%.1f", manualActualRpm);
+  }
+  snprintf(msg, sizeof(msg),
+           "# TEST %u END load_kg=%.3f rows=%lu steady_rows=%lu avg_freq_hz=%s avg_current_a=%s avg_rpm=%s avg_slip=%s\r\n",
+           testId, knownLoadKg, (unsigned long)testRows, (unsigned long)testSteadyRows,
+           freqField, currentField, rpmField, slipField);
   UartPrint(msg);
   if (testSteadyRows == 0) {
-    UartPrint("# no steady rows - RPM was never entered during this test\r\n");
+    UartPrint("# WARNING: no steady rows - the motor never held a constant speed during this test\r\n");
+  }
+  if (!haveManualRpm) {
+    UartPrint("# WARNING: no RPM entered - slip not calculated (type RPM <value> before STOP)\r\n");
   }
   haveManualRpm = false; // don't carry this test's RPM into idle rows or the next test
   UartPrint("# type TEST to start the next test\r\n");
@@ -675,22 +696,38 @@ static void LogDataPoint(void) {
     strcpy(currentField, "NA");
   }
 
+  float freqChange = freqHz - prevFreqHz;
+  if (freqChange < 0.0f) {
+    freqChange = -freqChange;
+  }
+  bool steady = freqHz > STEADY_MIN_FREQ_HZ && freqChange <= STEADY_FREQ_TOL_HZ;
+  prevFreqHz = freqHz;
+
   if (testActive) {
     testRows++;
-    if (haveRpm && haveCurrent) {
-      testSteadyRows++;
-      sumFreqHz += freqHz;
-      sumCurrentA += currentA;
-      sumActualRpm += actualRpm;
-      sumSlip += slip;
+    if (steady && haveCurrent) {
+      float plateauHz = testSteadyRows > 0 ? sumFreqHz / testSteadyRows : 0.0f;
+      if (testSteadyRows > 0 && freqHz > plateauHz + PLATEAU_TOL_HZ) {
+        // reached a higher steady speed - restart the averages there
+        testSteadyRows = 0;
+        sumFreqHz = 0.0f;
+        sumCurrentA = 0.0f;
+        sumSyncRpm = 0.0f;
+      }
+      if (testSteadyRows == 0 || freqHz >= plateauHz - PLATEAU_TOL_HZ) {
+        testSteadyRows++;
+        sumFreqHz += freqHz;
+        sumCurrentA += currentA;
+        sumSyncRpm += syncRpm;
+      }
     }
   }
 
   char line[160];
-  snprintf(line, sizeof(line), "%lu,%.2f,%s,%.1f,%s,%s,%s,%s,%.3f,%u\r\n",
+  snprintf(line, sizeof(line), "%lu,%.2f,%s,%.1f,%s,%s,%s,%s,%.3f,%u,%d\r\n",
            (unsigned long)HAL_GetTick(), freqHz, freqSource, syncRpm, rpmField,
            slipField, currentField, currentSource, knownLoadKg,
-           (unsigned)(testActive ? testId : 0));
+           (unsigned)(testActive ? testId : 0), steady ? 1 : 0);
   UartPrint(line);
 }
 

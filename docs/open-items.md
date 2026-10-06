@@ -75,7 +75,16 @@ Trace Asynchronous Sw, ITM port 0 enabled).
 Still recommended: an end-of-travel limit switch on the spare DI4 pair as a hardware
 stop.
 
-## 9. Future enhancements (not started)
+## 9. Cable travel / run time — estimated
+Usable cable travel is 64 in. Drum (`Drum_Rev_0`, 127 mm long, 50.8 mm flanges, 9 mm
+bore) is hourglass-shaped with a 15.9 mm waist, about 1.96 in of cable per turn. At
+10 Hz (about 290 RPM), assuming a direct drive, that's about 9.5 in/s and about 6.7 s
+for the full 64 in, less as cable stacks up. **Still to confirm:** whether there's a
+belt/pulley ratio between motor and drum (GT2 20T on the motor per item 1), and the
+measured travel on the first no-load run. Firmware logs at 250 ms and the PC logger
+warns at `--max-run` seconds to fit short runs.
+
+## 10. Future enhancements (not started)
 Ideas for after real calibration/validation data is collected:
 - **Local HMI/keypad** on the rig itself (standalone display + button input), so the
   station doesn't need a laptop tethered via serial to run a test or see live values.
