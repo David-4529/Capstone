@@ -1,18 +1,23 @@
 """PC-side logger for the STM32 slip/load test rig.
 
-Connects to the Nucleo's ST-LINK virtual COM port, shows the live data stream, sends
-the commands you type (TEST, RPM <value>, STOP, ...) to the board, and saves the
-data to CSV files:
+Connects to the Nucleo's ST-LINK virtual COM port and saves every motor run
+automatically - no TEST/STOP needed. At startup it asks for the baseline weight
+(hook + scale) and the test weight on the hook. Each time the motor runs, that run
+is saved to its own CSV; when the motor stops, the logger asks for the RPM shown on
+the SERVO display and adds one line to the summary.
 
-  data/2026-10-05_2106_base0.35kg/                      one folder per session
-    2026-10-05_2107_test01_load2.5kg_base0.35kg.csv     one file per test (TEST -> STOP)
-    2026-10-05_2106_summary_base0.35kg.csv              one line per finished test
-    2026-10-05_2106_all_rows_base0.35kg.csv             every row, tests and idle alike
-    2026-10-05_2106_session_log.txt                     everything sent/received
+  data/2026-10-05_2106_base0.35kg/                         one folder per session
+    2026-10-05_210712_run01_load2.5kg_base0.35kg.csv       one file per motor run
+    2026-10-05_2106_summary_base0.35kg.csv                 one line per run
+    2026-10-05_2106_all_rows_base0.35kg.csv                every row, runs and idle
+    2026-10-05_2106_session_log.txt                        everything sent/received
 
-At startup it asks for the baseline weight: what hangs on the cable with no test
-weight (hook + scale), in kg. It goes into every file name and the summary, so
-you know later what the rig carried on top of each test load.
+Commands typed in the window:
+  291 / 291 down     after a run: the SERVO RPM (and optionally the direction)
+  Enter              after a run: skip the RPM
+  WEIGHT 2.5         change the test weight for the following runs
+  QUIT               save and exit
+Anything else (VFDCHECK, DEBUG 1, ...) is sent to the board.
 
 Usage:
   python vfd_logger.py              # auto-detects the ST-LINK COM port
@@ -44,15 +49,18 @@ DEFAULT_COLUMNS = [
     "current_a", "current_source", "known_load_kg", "test_id", "steady",
 ]
 SUMMARY_COLUMNS = [
-    "pc_time", "test_id", "load_kg", "rows", "steady_rows", "avg_freq_hz",
-    "avg_current_a", "avg_rpm", "avg_slip", "baseline_kg", "total_kg", "file",
+    "pc_time", "run", "direction", "load_kg", "baseline_kg", "total_kg", "run_s",
+    "rows", "steady_rows", "avg_freq_hz", "avg_current_a", "sync_rpm", "actual_rpm",
+    "slip", "file",
 ]
 STLINK_VID = 0x0483
 RUNNING_FREQ_HZ = 0.5  # output frequency above this counts as "motor running"
 NO_REPLY_WARNING_S = 2.0
 
-TEST_START_RE = re.compile(r"^# TEST (\d+) START load_kg=([\d.]+)")
-TEST_END_RE = re.compile(r"^# TEST (\d+) END (.*)$")
+# Steady rows more than this below the highest steady speed in a run (pauses while
+# turning the pot, slowing down) are left out of that run's averages.
+PLATEAU_TOL_HZ = 0.2
+RPM_ANSWER_RE = re.compile(r"^(?:RPM\s*)?(\d+(?:\.\d+)?)(?:\s+(UP|DOWN|U|D))?$")
 
 
 def find_stlink_port():
@@ -86,12 +94,10 @@ def kg_label(kg):
     return f"{float(kg):g}kg"
 
 
-def ask_baseline_kg():
-    # The weight that's always on the cable (hook + scale), so each file records
-    # what the rig carried in addition to the test load.
+def ask_kg(question):
     while True:
         try:
-            text = input(">> Baseline weight in kg (hook + scale, no test weight; Enter = 0): ").strip()
+            text = input(f">> {question} (kg, Enter = 0): ").strip()
         except EOFError:
             return 0.0
         if not text:
@@ -106,25 +112,27 @@ def ask_baseline_kg():
 
 
 class Logger:
-    def __init__(self, ser, out_dir, max_run_s, show_all=False, baseline_kg=0.0, session_stamp=""):
+    def __init__(self, ser, out_dir, max_run_s, show_all, baseline_kg, load_kg, session_stamp):
         self.ser = ser
-        self.baseline_kg = baseline_kg
-        self.base_label = "base" + kg_label(baseline_kg)
-        self.session_stamp = session_stamp
-        self.show_all = show_all
-        self.max_run_s = max_run_s
-        self.run_start = None
-        self.run_warned = False
         self.out_dir = out_dir
+        self.max_run_s = max_run_s
+        self.show_all = show_all
+        self.baseline_kg = baseline_kg
+        self.load_kg = load_kg
+        self.base_label = "base" + kg_label(baseline_kg)
         self.columns = list(DEFAULT_COLUMNS)
         self.lock = threading.Lock()
         self.running = True
         self.closed = False
         self.last_reply_time = 0.0
 
+        self.run_count = 0
+        self.run = None        # the run in progress: rows, file, start time
+        self.pending = None    # finished run waiting for its SERVO RPM
+
         prefix = f"{session_stamp}_"
         self.session_log = open(os.path.join(out_dir, f"{prefix}session_log.txt"), "a", encoding="utf-8")
-        self.session_log.write(f"{now_str()} baseline_kg={baseline_kg:g}\n")
+        self.session_log.write(f"{now_str()} baseline_kg={baseline_kg:g} load_kg={load_kg:g}\n")
         self.all_rows_file = open(os.path.join(out_dir, f"{prefix}all_rows_{self.base_label}.csv"),
                                   "a", newline="", encoding="utf-8")
         self.all_rows = csv.writer(self.all_rows_file)
@@ -135,12 +143,6 @@ class Logger:
         self.summary_file = open(summary_path, "a", newline="", encoding="utf-8")
         self.summary = csv.writer(self.summary_file)
         self.summary.writerow(SUMMARY_COLUMNS)
-
-        self.test_id = None
-        self.test_file = None
-        self.test_writer = None
-        self.test_path = None
-        self.test_rows = 0
 
     # --- receiving -------------------------------------------------------------
     def reader_loop(self):
@@ -175,27 +177,36 @@ class Logger:
             if line.startswith("#"):
                 print(line)
                 self.last_reply_time = time.monotonic()
-                self.handle_comment(line, stamp)
+                if line.startswith("# millis,"):
+                    cols = line[2:].split(",")
+                    if cols != self.columns:
+                        self.columns = cols
+                        self.all_rows.writerow(["pc_time"] + self.columns)
                 return
 
             fields = line.split(",")
             if len(fields) != len(self.columns):
-                return  # partial/garbled line - kept in session_log.txt only
+                return  # partial/garbled line - kept in the session log only
             self.all_rows.writerow([stamp] + fields)
             self.all_rows_file.flush()
             row = dict(zip(self.columns, fields))
-            # Idle rows (motor stopped) are saved but not shown, so the screen stays
-            # still and you can see what you type. --show-all shows every row.
-            if self.show_all or self.is_running(row) or self.run_start is not None:
+            running = self.is_running(row)
+            # Idle rows are saved but not shown, so the screen stays still while you type.
+            if self.show_all or running or self.run is not None:
                 print(line)
-            self.track_run(row)
 
-            if self.test_writer is not None:
-                row = dict(zip(self.columns, fields))
-                if row.get("test_id") == str(self.test_id):
-                    self.test_writer.writerow([stamp] + fields)
-                    self.test_file.flush()
-                    self.test_rows += 1
+            if running and self.run is None:
+                self.start_run()
+            if self.run is not None:
+                self.run["writer"].writerow([stamp] + fields)
+                self.run["file"].flush()
+                self.run["rows"].append(row)
+                elapsed = time.monotonic() - self.run["t0"]
+                if running and not self.run["warned"] and elapsed >= self.max_run_s:
+                    self.run["warned"] = True
+                    print(f"\a!!! {elapsed:.1f} s running - RELEASE THE BUTTON (--max-run {self.max_run_s:g})")
+                if not running:
+                    self.end_run()
 
     @staticmethod
     def is_running(row):
@@ -204,79 +215,108 @@ class Logger:
         except ValueError:
             return False
 
-    def track_run(self, row):
-        # Times each motor run from the data stream, so you know how many seconds of
-        # cable travel you have, and beeps when a run passes --max-run seconds.
-        running = self.is_running(row)
-        t = time.monotonic()
-        if running and self.run_start is None:
-            self.run_start = t
-            self.run_warned = False
-        elif running and not self.run_warned and t - self.run_start >= self.max_run_s:
-            self.run_warned = True
-            print(f"\a!!! {t - self.run_start:.1f} s running - RELEASE THE BUTTON (--max-run {self.max_run_s:g})")
-        elif not running and self.run_start is not None:
-            print(f">> run lasted {t - self.run_start:.1f} s")
-            self.run_start = None
+    # --- runs ----------------------------------------------------------------------
+    def start_run(self):
+        if self.pending is not None:
+            print(f">> run {self.pending['n']}: no RPM entered - saved without it")
+            self.write_summary(self.pending, None, "")
+        self.run_count += 1
+        name = (f"{datetime.datetime.now():%Y-%m-%d_%H%M%S}_run{self.run_count:02d}"
+                f"_load{kg_label(self.load_kg)}_{self.base_label}.csv")
+        f = open(os.path.join(self.out_dir, name), "w", newline="", encoding="utf-8")
+        writer = csv.writer(f)
+        writer.writerow(["pc_time"] + self.columns + ["load_kg_test", "baseline_kg"])
+        self.run = {"n": self.run_count, "name": name, "file": f, "writer": writer,
+                    "rows": [], "t0": time.monotonic(), "warned": False, "load": self.load_kg}
 
-    def handle_comment(self, line, stamp):
-        if line.startswith("# millis,"):
-            cols = line[2:].split(",")
-            if cols != self.columns:
-                self.columns = cols
-                self.all_rows.writerow(["pc_time"] + self.columns)
-            return
+    def end_run(self):
+        run = self.run
+        self.run = None
+        run["file"].close()
+        run["seconds"] = time.monotonic() - run["t0"]
+        run.update(self.steady_stats(run["rows"]))
+        self.pending = run
+        if run["steady_rows"]:
+            print(f">> run {run['n']} saved ({run['seconds']:.1f} s): {run['avg_freq_hz']:.2f} Hz, "
+                  f"{run['avg_current_a']:.3f} A over {run['steady_rows']} steady rows -> {run['name']}")
+        else:
+            print(f">> run {run['n']} saved ({run['seconds']:.1f} s) - too short, no steady speed -> {run['name']}")
+        print(f">> type the SERVO RPM for run {run['n']} (e.g. 291, or 291 down) and press Enter,"
+              f" or just Enter to skip")
 
-        m = TEST_START_RE.match(line)
-        if m:
-            self.close_test_file()
-            self.test_id = int(m.group(1))
-            load = m.group(2)
-            name = (f"{datetime.datetime.now():%Y-%m-%d_%H%M%S}_test{self.test_id:02d}"
-                    f"_load{kg_label(load)}_{self.base_label}.csv")
-            self.test_path = os.path.join(self.out_dir, name)
-            self.test_file = open(self.test_path, "w", newline="", encoding="utf-8")
-            self.test_writer = csv.writer(self.test_file)
-            self.test_writer.writerow(["pc_time"] + self.columns)
-            self.test_rows = 0
-            print(f">> logging test {self.test_id} ({load} kg) to {name}")
-            return
+    @staticmethod
+    def steady_stats(rows):
+        # Average only the rows at the highest constant speed the run held.
+        steady = []
+        for r in rows:
+            try:
+                if r.get("steady") == "1":
+                    steady.append((float(r["freq_hz"]), float(r["current_a"]), float(r["sync_rpm"])))
+            except (KeyError, ValueError):
+                pass
+        if not steady:
+            return {"steady_rows": 0}
+        top = max(f for f, _, _ in steady)
+        plateau = [s for s in steady if s[0] >= top - PLATEAU_TOL_HZ]
+        n = len(plateau)
+        return {
+            "steady_rows": n,
+            "avg_freq_hz": sum(s[0] for s in plateau) / n,
+            "avg_current_a": sum(s[1] for s in plateau) / n,
+            "sync_rpm": sum(s[2] for s in plateau) / n,
+        }
 
-        m = TEST_END_RE.match(line)
-        if m:
-            fields = dict(kv.split("=", 1) for kv in m.group(2).split() if "=" in kv)
-            fname = os.path.basename(self.test_path) if self.test_path else ""
-            self.summary.writerow([
-                stamp, m.group(1), fields.get("load_kg", ""), fields.get("rows", ""),
-                fields.get("steady_rows", ""), fields.get("avg_freq_hz", ""),
-                fields.get("avg_current_a", ""), fields.get("avg_rpm", ""),
-                fields.get("avg_slip", ""), f"{self.baseline_kg:g}",
-                self.total_kg(fields.get("load_kg", "")), fname,
-            ])
-            self.summary_file.flush()
-            saved = self.test_rows
-            self.close_test_file()
-            print(f">> test {m.group(1)} saved: {saved} rows -> {fname}  ({self.summary_name} updated)")
+    def write_summary(self, run, rpm, direction):
+        slip = ""
+        if rpm is not None and run.get("sync_rpm"):
+            slip = f"{(run['sync_rpm'] - rpm) / run['sync_rpm']:.4f}"
+        fmt = lambda key, spec: format(run[key], spec) if key in run else ""
+        self.summary.writerow([
+            now_str(), run["n"], direction, f"{run['load']:g}", f"{self.baseline_kg:g}",
+            f"{run['load'] + self.baseline_kg:g}", f"{run['seconds']:.1f}", len(run["rows"]),
+            run["steady_rows"], fmt("avg_freq_hz", ".2f"), fmt("avg_current_a", ".3f"),
+            fmt("sync_rpm", ".1f"), "" if rpm is None else f"{rpm:g}", slip, run["name"],
+        ])
+        self.summary_file.flush()
+        return slip
 
-    def total_kg(self, load):
-        try:
-            return f"{float(load) + self.baseline_kg:g}"
-        except ValueError:
-            return ""
-
-    def close_test_file(self):
-        if self.test_file is not None:
-            self.test_file.close()
-        self.test_file = None
-        self.test_writer = None
-        self.test_id = None
-        self.test_path = None
-
-    # --- sending ---------------------------------------------------------------
-    def send(self, text):
+    # --- typed input -----------------------------------------------------------
+    def handle_input(self, text):
         cmd = text.strip().upper()
-        if not cmd:
-            return
+        with self.lock:
+            if self.pending is not None:
+                if not cmd:
+                    self.write_summary(self.pending, None, "")
+                    print(f">> run {self.pending['n']} added to {self.summary_name} without RPM")
+                    self.pending = None
+                    return
+                m = RPM_ANSWER_RE.match(cmd)
+                if m:
+                    rpm = float(m.group(1))
+                    direction = {"U": "up", "D": "down"}.get(m.group(2), (m.group(2) or "").lower())
+                    slip = self.write_summary(self.pending, rpm, direction)
+                    print(f">> run {self.pending['n']}: RPM {rpm:g}{' ' + direction if direction else ''}"
+                          f"{', slip ' + slip if slip else ''} -> added to {self.summary_name}")
+                    self.pending = None
+                    return
+            if not cmd:
+                return
+            parts = cmd.split()
+            if parts[0] in ("WEIGHT", "LOAD") and len(parts) == 2:
+                try:
+                    kg = float(parts[1])
+                except ValueError:
+                    kg = -1
+                if kg >= 0:
+                    self.load_kg = kg
+                    self.session_log.write(f"{now_str()} load_kg={kg:g}\n")
+                    print(f">> test weight is now {kg:g} kg for the next runs")
+                else:
+                    print(">> usage: WEIGHT 2.5")
+                return
+        self.send(cmd)
+
+    def send(self, cmd):
         with self.lock:
             self.session_log.write(f"{now_str()} > {cmd}\n")
             self.session_log.flush()
@@ -286,17 +326,17 @@ class Logger:
 
     def check_reply(self, sent_at, cmd):
         if self.running and self.last_reply_time < sent_at:
-            print(f"!! no reply to '{cmd}' from the board. If typed commands never get a reply,\n"
-                  f"!! tick NVIC -> 'USART2 global interrupt' in the .ioc, regenerate, rebuild.")
+            print(f"!! no reply to '{cmd}' from the board - is it running (LD2 blinking)?")
 
     def close(self):
         self.running = False
         with self.lock:
             self.closed = True
-            if self.test_file is not None:
-                print(f">> test {self.test_id} was still running - its rows so far are saved in "
-                      f"{os.path.basename(self.test_path)}")
-            self.close_test_file()
+            if self.run is not None:
+                self.run["file"].close()
+                print(f">> run {self.run['n']} was still going - its rows are saved in {self.run['name']}")
+            if self.pending is not None:
+                self.write_summary(self.pending, None, "")
             for f in (self.session_log, self.all_rows_file, self.summary_file):
                 f.close()
 
@@ -306,16 +346,21 @@ def main():
     ap.add_argument("--port", help="serial port, e.g. COM5 (default: auto-detect ST-LINK)")
     ap.add_argument("--baud", type=int, default=115200)
     ap.add_argument("--out", default="data", help="folder for session folders (default: ./data)")
-    ap.add_argument("--max-run", type=float, default=3.0,
-                    help="beep and warn when the motor has run this many seconds (default: 3.0)")
+    ap.add_argument("--max-run", type=float, default=5.0,
+                    help="beep and warn when the motor has run this many seconds (default: 5.0)")
     ap.add_argument("--show-all", action="store_true",
                     help="show every data row, including idle ones (default: only while the motor runs)")
     ap.add_argument("--baseline", type=float,
                     help="baseline weight in kg (hook + scale); skips the startup question")
+    ap.add_argument("--weight", type=float,
+                    help="test weight in kg on the hook; skips the startup question")
     args = ap.parse_args()
 
     port = args.port or find_stlink_port()
-    baseline_kg = args.baseline if args.baseline is not None else ask_baseline_kg()
+    baseline_kg = args.baseline if args.baseline is not None else ask_kg(
+        "Baseline weight - hook + scale only, no test weight")
+    load_kg = args.weight if args.weight is not None else ask_kg(
+        "Test weight on the hook for these runs (0 for the no-load baseline)")
     stamp = f"{datetime.datetime.now():%Y-%m-%d_%H%M}"
     out_dir = os.path.join(args.out, f"{stamp}_base{kg_label(baseline_kg)}")
     os.makedirs(out_dir, exist_ok=True)
@@ -326,12 +371,12 @@ def main():
         sys.exit(f"Couldn't open {port}: {e}\n"
                  f"Close anything else using it (PuTTY, Tera Term) and try again.")
 
-    log = Logger(ser, out_dir, args.max_run, args.show_all, baseline_kg, stamp)
-    print(f">> connected to {port} at {args.baud} baud, baseline {baseline_kg:g} kg, saving to {out_dir}")
-    print(">> commands: TEST (asks for weight)  RPM <value>  STOP  VFDCHECK  QUIT")
-    print(f">> run-time warning at {args.max_run:g} s (change with --max-run)")
-    print(">> data rows are shown only while the motor runs (all rows are still saved)")
-    print(">> tip: press the Nucleo's reset button to see the startup VFDCHECK\n")
+    log = Logger(ser, out_dir, args.max_run, args.show_all, baseline_kg, load_kg, stamp)
+    print(f">> connected to {port}, baseline {baseline_kg:g} kg, test weight {load_kg:g} kg")
+    print(f">> saving to {out_dir}")
+    print(">> every motor run is saved automatically - after each run, type the SERVO RPM")
+    print(">> commands: WEIGHT <kg> (change test weight)   VFDCHECK   QUIT")
+    print(f">> run-time warning at {args.max_run:g} s (change with --max-run)\n")
 
     reader = threading.Thread(target=log.reader_loop, daemon=True)
     reader.start()
@@ -345,9 +390,9 @@ def main():
             if text.strip().upper() in ("QUIT", "EXIT"):
                 break
             try:
-                log.send(text)
+                log.handle_input(text)
             except Exception:
-                report_crash(f"while sending {text!r}")
+                report_crash(f"while handling {text!r}")
     except KeyboardInterrupt:
         pass
     finally:

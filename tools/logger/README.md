@@ -20,32 +20,31 @@ It finds the ST-LINK COM port by itself. If it can't, run it from a command prom
 Only one program can use the COM port at a time, so close PuTTY/Tera Term first. The
 STM32CubeIDE debugger and SWV console can stay open: they use a different connection.
 
-## Running a test
+## Running tests
 
-Cable travel is only 64 in, so each run lasts a few seconds (see "Run time" below).
-The board logs a row every 0.25 s and marks rows where the speed is constant
-(`steady` = 1). You can type RPM **after** releasing the button.
+At startup the logger asks two questions:
+
+1. **Baseline weight**: hook + scale only, in kg. It goes into every file name.
+2. **Test weight** on the hook for these runs (0 for the no-load baseline).
+
+After that, **every motor run is saved automatically**. You don't need TEST or STOP.
 
 ```
-TEST                 board asks: "what weight are you using?"
-0                    weight in kg (0 = no load) -> TEST 1 START, new CSV opened
-                     hold UP; read the RPM on the SERVO display; release before the
-                     cable runs out (the logger beeps at --max-run seconds)
-RPM 290              the RPM you read on the display
-STOP                 TEST 1 END + averages -> CSV closed, summary.csv updated
-                     lower the cable back down (not part of the test), repeat
-QUIT                 exit the logger
+                     hold UP; rows scroll while the motor runs; release
+>> run 1 saved (5.8 s): 10.00 Hz, 0.660 A over 18 steady rows -> ..._run01_load0kg_base0.35kg.csv
+>> type the SERVO RPM for run 1 (e.g. 291, or 291 down) ...
+291 up               the RPM you read on the display (+ direction, optional)
+>> run 1: RPM 291 up, slip 0.0300 -> added to ..._summary_base0.35kg.csv
+                     lower with DOWN: also saved as a run; type its RPM + "down",
+                     or press Enter to skip it
+WEIGHT 2.5           change the test weight before the next runs
+QUIT                 exit
 ```
 
-Data rows only scroll on screen while the motor is running, so the window stays still
-while you type (everything is still saved). Use `--show-all` to see every row.
-
-Other commands: `VFDCHECK`, `CANCEL` (at the weight prompt), `DEBUG 1`/`DEBUG 0`.
-
-The averages printed at `STOP` use only the steady rows at the highest speed held
-during the test. Rows from the ramp-up, pauses while turning the pot, and slowing down
-are left out. Slip in the summary = (average synchronous RPM − typed RPM) / average
-synchronous RPM.
+The averages for each run use only the steady rows at the highest speed held in that
+run. Ramp-up, pauses while turning the pot, and slowing down are left out. Slip = (sync
+RPM − typed RPM) / sync RPM. Anything else you type (`VFDCHECK`, `DEBUG 1`) goes to
+the board. The board's own `TEST`/`STOP` commands still work, but you don't need them.
 
 ## Run time
 
@@ -53,14 +52,12 @@ The drum (`Drum_Rev_0`) is hourglass-shaped and the cable winds on its 15.9 mm
 waist, so one turn moves about 1.96 in of cable. At 10 Hz (about 290 RPM, driven
 directly) that's about 9.5 in/s, and 64 in lasts about 6.7 s. The effective diameter
 grows as cable piles up, so plan on 4–5 s. The logger prints `run lasted X s` after
-every run and beeps at `--max-run` (default 3.0 s). On the first no-load run, measure
+every run and beeps at `--max-run` (default 5.0 s). On the first no-load run, measure
 how far the cable moved, then adjust: `run_logger.bat --max-run 4`.
 
 ## Output files
 
-At startup the logger asks for the **baseline weight**: what always hangs on the
-cable with no test weight (hook + scale), in kg. Press Enter for 0. To skip the
-question, run `run_logger.bat --baseline 0.35`. The baseline goes into every file
+To skip the startup questions, run `run_logger.bat --baseline 0.35 --weight 2.5`. The baseline goes into every file
 name and into the summary (`baseline_kg`, and `total_kg` = load + baseline).
 
 Each run creates a folder named after the date, time and baseline:
@@ -68,9 +65,9 @@ Each run creates a folder named after the date, time and baseline:
 | File (example) | Contents |
 |---|---|
 | `data/2026-10-05_2106_base0.35kg/` | The session folder |
-| `2026-10-05_210712_test01_load2.5kg_base0.35kg.csv` | Every row from one test (TEST → STOP) |
-| `2026-10-05_2106_summary_base0.35kg.csv` | One line per test: load, baseline, total, steady-state averages |
-| `2026-10-05_2106_all_rows_base0.35kg.csv` | Every row in the session, including idle time between tests |
+| `2026-10-05_210712_run01_load2.5kg_base0.35kg.csv` | Every row from one motor run |
+| `2026-10-05_2106_summary_base0.35kg.csv` | One line per run: direction, load, baseline, total, steady averages, RPM, slip |
+| `2026-10-05_2106_all_rows_base0.35kg.csv` | Every row in the session, including idle time |
 | `2026-10-05_2106_session_log.txt` | Everything sent and received, with PC timestamps |
 
 All CSVs open directly in Excel. The summary file is the one to plot (load vs. slip,
