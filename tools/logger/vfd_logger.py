@@ -4,11 +4,15 @@ Connects to the Nucleo's ST-LINK virtual COM port, shows the live data stream, s
 the commands you type (TEST, RPM <value>, STOP, ...) to the board, and saves the
 data to CSV files:
 
-  data/session_<date>_<time>/
-    session_log.txt      everything received and sent, with PC timestamps
-    all_rows.csv         every data row from the session, tests and idle alike
-    test_01_2.5kg.csv    one file per test (rows logged between TEST and STOP)
-    summary.csv          one line per finished test (steady-state averages)
+  data/2026-10-05_2106_base0.35kg/                      one folder per session
+    2026-10-05_2107_test01_load2.5kg_base0.35kg.csv     one file per test (TEST -> STOP)
+    2026-10-05_2106_summary_base0.35kg.csv              one line per finished test
+    2026-10-05_2106_all_rows_base0.35kg.csv             every row, tests and idle alike
+    2026-10-05_2106_session_log.txt                     everything sent/received
+
+At startup it asks for the baseline weight: what hangs on the cable with no test
+weight (hook + scale), in kg. It goes into every file name and the summary, so
+you know later what the rig carried on top of each test load.
 
 Usage:
   python vfd_logger.py              # auto-detects the ST-LINK COM port
@@ -40,7 +44,7 @@ DEFAULT_COLUMNS = [
 ]
 SUMMARY_COLUMNS = [
     "pc_time", "test_id", "load_kg", "rows", "steady_rows", "avg_freq_hz",
-    "avg_current_a", "avg_rpm", "avg_slip", "file",
+    "avg_current_a", "avg_rpm", "avg_slip", "baseline_kg", "total_kg", "file",
 ]
 STLINK_VID = 0x0483
 RUNNING_FREQ_HZ = 0.5  # output frequency above this counts as "motor running"
@@ -64,13 +68,35 @@ def now_str():
     return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
 
 
-def kg_label(load_kg):
-    return f"{float(load_kg):g}".replace(".", "p") + "kg"
+def kg_label(kg):
+    return f"{float(kg):g}kg"
+
+
+def ask_baseline_kg():
+    # The weight that's always on the cable (hook + scale), so each file records
+    # what the rig carried in addition to the test load.
+    while True:
+        try:
+            text = input(">> Baseline weight in kg (hook + scale, no test weight; Enter = 0): ").strip()
+        except EOFError:
+            return 0.0
+        if not text:
+            return 0.0
+        try:
+            kg = float(text)
+            if kg >= 0:
+                return kg
+        except ValueError:
+            pass
+        print(">> enter a number, e.g. 0.35")
 
 
 class Logger:
-    def __init__(self, ser, out_dir, max_run_s, show_all=False):
+    def __init__(self, ser, out_dir, max_run_s, show_all=False, baseline_kg=0.0, session_stamp=""):
         self.ser = ser
+        self.baseline_kg = baseline_kg
+        self.base_label = "base" + kg_label(baseline_kg)
+        self.session_stamp = session_stamp
         self.show_all = show_all
         self.max_run_s = max_run_s
         self.run_start = None
@@ -82,12 +108,16 @@ class Logger:
         self.closed = False
         self.last_reply_time = 0.0
 
-        self.session_log = open(os.path.join(out_dir, "session_log.txt"), "a", encoding="utf-8")
-        self.all_rows_file = open(os.path.join(out_dir, "all_rows.csv"), "a", newline="", encoding="utf-8")
+        prefix = f"{session_stamp}_"
+        self.session_log = open(os.path.join(out_dir, f"{prefix}session_log.txt"), "a", encoding="utf-8")
+        self.session_log.write(f"{now_str()} baseline_kg={baseline_kg:g}\n")
+        self.all_rows_file = open(os.path.join(out_dir, f"{prefix}all_rows_{self.base_label}.csv"),
+                                  "a", newline="", encoding="utf-8")
         self.all_rows = csv.writer(self.all_rows_file)
         self.all_rows.writerow(["pc_time"] + self.columns)
 
-        summary_path = os.path.join(out_dir, "summary.csv")
+        summary_path = os.path.join(out_dir, f"{prefix}summary_{self.base_label}.csv")
+        self.summary_name = os.path.basename(summary_path)
         self.summary_file = open(summary_path, "a", newline="", encoding="utf-8")
         self.summary = csv.writer(self.summary_file)
         self.summary.writerow(SUMMARY_COLUMNS)
@@ -185,7 +215,8 @@ class Logger:
             self.close_test_file()
             self.test_id = int(m.group(1))
             load = m.group(2)
-            name = f"test_{self.test_id:02d}_{kg_label(load)}_{datetime.datetime.now():%H%M%S}.csv"
+            name = (f"{datetime.datetime.now():%Y-%m-%d_%H%M%S}_test{self.test_id:02d}"
+                    f"_load{kg_label(load)}_{self.base_label}.csv")
             self.test_path = os.path.join(self.out_dir, name)
             self.test_file = open(self.test_path, "w", newline="", encoding="utf-8")
             self.test_writer = csv.writer(self.test_file)
@@ -202,12 +233,19 @@ class Logger:
                 stamp, m.group(1), fields.get("load_kg", ""), fields.get("rows", ""),
                 fields.get("steady_rows", ""), fields.get("avg_freq_hz", ""),
                 fields.get("avg_current_a", ""), fields.get("avg_rpm", ""),
-                fields.get("avg_slip", ""), fname,
+                fields.get("avg_slip", ""), f"{self.baseline_kg:g}",
+                self.total_kg(fields.get("load_kg", "")), fname,
             ])
             self.summary_file.flush()
             saved = self.test_rows
             self.close_test_file()
-            print(f">> test {m.group(1)} saved: {saved} rows -> {fname}  (summary.csv updated)")
+            print(f">> test {m.group(1)} saved: {saved} rows -> {fname}  ({self.summary_name} updated)")
+
+    def total_kg(self, load):
+        try:
+            return f"{float(load) + self.baseline_kg:g}"
+        except ValueError:
+            return ""
 
     def close_test_file(self):
         if self.test_file is not None:
@@ -255,10 +293,14 @@ def main():
                     help="beep and warn when the motor has run this many seconds (default: 3.0)")
     ap.add_argument("--show-all", action="store_true",
                     help="show every data row, including idle ones (default: only while the motor runs)")
+    ap.add_argument("--baseline", type=float,
+                    help="baseline weight in kg (hook + scale); skips the startup question")
     args = ap.parse_args()
 
     port = args.port or find_stlink_port()
-    out_dir = os.path.join(args.out, f"session_{datetime.datetime.now():%Y%m%d_%H%M%S}")
+    baseline_kg = args.baseline if args.baseline is not None else ask_baseline_kg()
+    stamp = f"{datetime.datetime.now():%Y-%m-%d_%H%M}"
+    out_dir = os.path.join(args.out, f"{stamp}_base{kg_label(baseline_kg)}")
     os.makedirs(out_dir, exist_ok=True)
 
     try:
@@ -267,8 +309,8 @@ def main():
         sys.exit(f"Couldn't open {port}: {e}\n"
                  f"Close anything else using it (PuTTY, Tera Term) and try again.")
 
-    log = Logger(ser, out_dir, args.max_run, args.show_all)
-    print(f">> connected to {port} at {args.baud} baud, saving to {out_dir}")
+    log = Logger(ser, out_dir, args.max_run, args.show_all, baseline_kg, stamp)
+    print(f">> connected to {port} at {args.baud} baud, baseline {baseline_kg:g} kg, saving to {out_dir}")
     print(">> commands: TEST (asks for weight)  RPM <value>  STOP  VFDCHECK  QUIT")
     print(f">> run-time warning at {args.max_run:g} s (change with --max-run)")
     print(">> data rows are shown only while the motor runs (all rows are still saved)")

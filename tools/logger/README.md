@@ -58,14 +58,20 @@ how far the cable moved, then adjust: `run_logger.bat --max-run 4`.
 
 ## Output files
 
-Each run creates `data/session_<date>_<time>/` next to the script:
+At startup the logger asks for the **baseline weight**: what always hangs on the
+cable with no test weight (hook + scale), in kg. Press Enter for 0. To skip the
+question, run `run_logger.bat --baseline 0.35`. The baseline goes into every file
+name and into the summary (`baseline_kg`, and `total_kg` = load + baseline).
 
-| File | Contents |
+Each run creates a folder named after the date, time and baseline:
+
+| File (example) | Contents |
 |---|---|
-| `test_01_2p5kg_<time>.csv` | Every row from one test (TEST → STOP) |
-| `summary.csv` | One line per test: load, row counts, steady-state averages |
-| `all_rows.csv` | Every row in the session, including idle time between tests |
-| `session_log.txt` | Everything sent and received, with PC timestamps |
+| `data/2026-10-05_2106_base0.35kg/` | The session folder |
+| `2026-10-05_210712_test01_load2.5kg_base0.35kg.csv` | Every row from one test (TEST → STOP) |
+| `2026-10-05_2106_summary_base0.35kg.csv` | One line per test: load, baseline, total, steady-state averages |
+| `2026-10-05_2106_all_rows_base0.35kg.csv` | Every row in the session, including idle time between tests |
+| `2026-10-05_2106_session_log.txt` | Everything sent and received, with PC timestamps |
 
-All CSVs open directly in Excel. `summary.csv` is the one to plot (load vs. slip,
+All CSVs open directly in Excel. The summary file is the one to plot (load vs. slip,
 load vs. current).
