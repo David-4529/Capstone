@@ -69,8 +69,9 @@ def kg_label(load_kg):
 
 
 class Logger:
-    def __init__(self, ser, out_dir, max_run_s):
+    def __init__(self, ser, out_dir, max_run_s, show_all=False):
         self.ser = ser
+        self.show_all = show_all
         self.max_run_s = max_run_s
         self.run_start = None
         self.run_warned = False
@@ -123,9 +124,9 @@ class Logger:
             stamp = now_str()
             self.session_log.write(f"{stamp} < {line}\n")
             self.session_log.flush()
-            print(line)
 
             if line.startswith("#"):
+                print(line)
                 self.last_reply_time = time.monotonic()
                 self.handle_comment(line, stamp)
                 return
@@ -135,7 +136,12 @@ class Logger:
                 return  # partial/garbled line - kept in session_log.txt only
             self.all_rows.writerow([stamp] + fields)
             self.all_rows_file.flush()
-            self.track_run(dict(zip(self.columns, fields)))
+            row = dict(zip(self.columns, fields))
+            # Idle rows (motor stopped) are saved but not shown, so the screen stays
+            # still and you can see what you type. --show-all shows every row.
+            if self.show_all or self.is_running(row) or self.run_start is not None:
+                print(line)
+            self.track_run(row)
 
             if self.test_writer is not None:
                 row = dict(zip(self.columns, fields))
@@ -144,13 +150,17 @@ class Logger:
                     self.test_file.flush()
                     self.test_rows += 1
 
+    @staticmethod
+    def is_running(row):
+        try:
+            return float(row.get("freq_hz", "0")) > RUNNING_FREQ_HZ
+        except ValueError:
+            return False
+
     def track_run(self, row):
         # Times each motor run from the data stream, so you know how many seconds of
         # cable travel you have, and beeps when a run passes --max-run seconds.
-        try:
-            running = float(row.get("freq_hz", "0")) > RUNNING_FREQ_HZ
-        except ValueError:
-            return
+        running = self.is_running(row)
         t = time.monotonic()
         if running and self.run_start is None:
             self.run_start = t
@@ -243,6 +253,8 @@ def main():
     ap.add_argument("--out", default="data", help="folder for session folders (default: ./data)")
     ap.add_argument("--max-run", type=float, default=3.0,
                     help="beep and warn when the motor has run this many seconds (default: 3.0)")
+    ap.add_argument("--show-all", action="store_true",
+                    help="show every data row, including idle ones (default: only while the motor runs)")
     args = ap.parse_args()
 
     port = args.port or find_stlink_port()
@@ -255,10 +267,11 @@ def main():
         sys.exit(f"Couldn't open {port}: {e}\n"
                  f"Close anything else using it (PuTTY, Tera Term) and try again.")
 
-    log = Logger(ser, out_dir, args.max_run)
+    log = Logger(ser, out_dir, args.max_run, args.show_all)
     print(f">> connected to {port} at {args.baud} baud, saving to {out_dir}")
     print(">> commands: TEST (asks for weight)  RPM <value>  STOP  VFDCHECK  QUIT")
     print(f">> run-time warning at {args.max_run:g} s (change with --max-run)")
+    print(">> data rows are shown only while the motor runs (all rows are still saved)")
     print(">> tip: press the Nucleo's reset button to see the startup VFDCHECK\n")
 
     reader = threading.Thread(target=log.reader_loop, daemon=True)

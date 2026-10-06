@@ -37,6 +37,9 @@ STOP                 TEST 1 END + averages -> CSV closed, summary.csv updated
 QUIT                 exit the logger
 ```
 
+Data rows only scroll on screen while the motor is running, so the window stays still
+while you type (everything is still saved). Use `--show-all` to see every row.
+
 Other commands: `VFDCHECK`, `CANCEL` (at the weight prompt), `DEBUG 1`/`DEBUG 0`.
 
 The averages printed at `STOP` use only the steady rows at the highest speed held
