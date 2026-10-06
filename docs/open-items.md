@@ -34,6 +34,14 @@ Electrical interface (analog voltage / digital pulse / serial) still not confirm
 its manual or physical outputs need to be checked before the ESP32 can read it
 automatically.
 
+**Identified:** the SERVO system is a Lucas-Nülle **ActiveServo (SB2663-6U)**, which
+connects to the PC over **USB** (`USB\VID_16C1&PID_2663`). Its Windows driver isn't fully
+installed yet ("Device not started (UNIUSB) ... requires further installation"). Once
+the Lucas-Nülle ActiveServo software and driver are installed, it can record shaft
+speed (and torque) on the same PC clock as the logger, and a merge script can line
+the two up per run. Deferred for now: RPM is read off the display by eye and
+entered per run.
+
 **Interim workaround in place:** the SERVO system's own display shows a readable
 numeric RPM value, so `firmware/src/main.cpp` accepts it via a `RPM <value>` serial
 command (same pattern as the crane-scale `LOAD <kg>` command below) — the operator
