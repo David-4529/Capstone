@@ -1,0 +1,3 @@
+pc_time,run,direction,load_kg,baseline_kg,total_kg,run_s,rows,steady_rows,avg_freq_hz,avg_current_a,sync_rpm,actual_rpm,slip,file
+2026-10-05 21:37:03.036,1,,0,0,0,1.0,5,1,4.95,1.090,148.5,,,2026-10-05_213701_run01_load0kg_base0kg.csv
+2026-10-05 21:37:13.930,2,,0,0,0,9.7,40,36,4.85,0.814,145.4,,,2026-10-05_213703_run02_load0kg_base0kg.csv
