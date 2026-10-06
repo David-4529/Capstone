@@ -40,6 +40,13 @@
 #define REG_OUTPUT_CURRENT 0x2104
 #define MOTOR_POLE_COUNT 4
 #define LOG_INTERVAL_MS 2000
+
+// --- HMI: 16x2 I2C LCD (PCF8574 backpack) + 4x4 matrix keypad ---
+#define LCD_I2C_ADDR (0x27 << 1) // HAL wants the 8-bit address; try (0x3F << 1) if the LCD doesn't respond
+#define LCD_RS 0x01
+#define LCD_EN 0x04
+#define LCD_BACKLIGHT 0x08
+#define KEYPAD_SCAN_INTERVAL_MS 20
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -50,6 +57,7 @@
 /* Private variables ---------------------------------------------------------*/
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
+I2C_HandleTypeDef hi2c1;
 
 /* USER CODE BEGIN PV */
 static uint32_t lastLogMs = 0;
@@ -66,6 +74,18 @@ static uint8_t rxByte;
 static char lineBuf[64];
 static volatile uint8_t lineLen = 0;
 static volatile bool lineReady = false;
+
+// --- HMI state ---
+static float lastFreqHz = 0.0f;
+static float lastCurrentA = 0.0f;
+
+typedef enum { HMI_IDLE, HMI_ENTER_LOAD, HMI_ENTER_RPM, HMI_ENTER_FREQ, HMI_ENTER_CURRENT } HmiMode;
+static HmiMode hmiMode = HMI_IDLE;
+static char hmiEntryBuf[12];
+static uint8_t hmiEntryLen = 0;
+
+static char lastKey = 0;
+static uint32_t lastKeyScanMs = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -73,12 +93,18 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_USART2_UART_Init(void);
+static void MX_I2C1_Init(void);
 /* USER CODE BEGIN PFP */
 static uint16_t ModbusCrc16(const uint8_t *buf, uint16_t len);
 static bool ModbusReadHoldingRegister(uint16_t regAddr, uint16_t *value);
 static void UartPrint(const char *s);
 static void HandleLine(const char *line);
 static void LogDataPoint(void);
+static void Lcd_Init(void);
+static void Lcd_PrintLine(uint8_t row, const char *s);
+static char Keypad_Scan(void);
+static void HandleKeypadKey(char key);
+static void HmiShowIdle(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -117,8 +143,18 @@ int main(void)
   MX_GPIO_Init();
   MX_USART1_UART_Init();
   MX_USART2_UART_Init();
+  MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
   HAL_GPIO_WritePin(RS485_DE_RE_GPIO_Port, RS485_DE_RE_Pin, GPIO_PIN_RESET); // start in receive mode
+
+  // Keypad rows idle HIGH (a press pulls a column LOW when its row is driven LOW)
+  HAL_GPIO_WritePin(KP_R1_GPIO_Port, KP_R1_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(KP_R2_GPIO_Port, KP_R2_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(KP_R3_GPIO_Port, KP_R3_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(KP_R4_GPIO_Port, KP_R4_Pin, GPIO_PIN_SET);
+
+  Lcd_Init();
+  HmiShowIdle();
 
   HAL_UART_Receive_IT(&huart2, &rxByte, 1);
 
@@ -141,6 +177,15 @@ int main(void)
     if (now - lastLogMs >= LOG_INTERVAL_MS) {
       lastLogMs = now;
       LogDataPoint();
+    }
+
+    if (now - lastKeyScanMs >= KEYPAD_SCAN_INTERVAL_MS) {
+      lastKeyScanMs = now;
+      char key = Keypad_Scan();
+      if (key != 0 && key != lastKey) {
+        HandleKeypadKey(key);
+      }
+      lastKey = key;
     }
     /* USER CODE END WHILE */
 
@@ -257,6 +302,40 @@ static void MX_USART2_UART_Init(void)
 }
 
 /**
+  * @brief I2C1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_I2C1_Init(void)
+{
+
+  /* USER CODE BEGIN I2C1_Init 0 */
+
+  /* USER CODE END I2C1_Init 0 */
+
+  /* USER CODE BEGIN I2C1_Init 1 */
+
+  /* USER CODE END I2C1_Init 1 */
+  hi2c1.Instance = I2C1;
+  hi2c1.Init.ClockSpeed = 100000;
+  hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
+  hi2c1.Init.OwnAddress1 = 0;
+  hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+  hi2c1.Init.OwnAddress2 = 0;
+  hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  if (HAL_I2C_Init(&hi2c1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN I2C1_Init 2 */
+
+  /* USER CODE END I2C1_Init 2 */
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -269,9 +348,14 @@ static void MX_GPIO_Init(void)
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
+  __HAL_RCC_GPIOC_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(RS485_DE_RE_GPIO_Port, RS485_DE_RE_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, KP_R1_Pin|KP_R2_Pin|KP_R3_Pin|KP_R4_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin : RS485_DE_RE_Pin */
   GPIO_InitStruct.Pin = RS485_DE_RE_Pin;
@@ -279,6 +363,31 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(RS485_DE_RE_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : KP_R1_Pin KP_R2_Pin KP_R3_Pin KP_R4_Pin (keypad rows) */
+  GPIO_InitStruct.Pin = KP_R1_Pin|KP_R2_Pin|KP_R3_Pin|KP_R4_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : KP_C1_Pin (keypad column) */
+  GPIO_InitStruct.Pin = KP_C1_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(KP_C1_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : KP_C2_Pin (keypad column) */
+  GPIO_InitStruct.Pin = KP_C2_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(KP_C2_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : KP_C3_Pin KP_C4_Pin (keypad columns) */
+  GPIO_InitStruct.Pin = KP_C3_Pin|KP_C4_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
@@ -454,6 +563,7 @@ static void LogDataPoint(void) {
     UartPrint("# no frequency available (modbus read failed and no FREQ <hz> entered)\r\n");
     return;
   }
+  lastFreqHz = freqHz;
 
   float syncRpm = 120.0f * freqHz / MOTOR_POLE_COUNT;
 
@@ -471,6 +581,7 @@ static void LogDataPoint(void) {
     currentA = raw / 100.0f; // confirmed against GSoft2's own monitor: raw 69 = 0.69 A
     currentSource = "modbus";
     haveCurrent = true;
+    lastCurrentA = currentA;
   } else if (haveManualCurrent) {
     currentA = manualCurrentA;
     currentSource = "manual";
@@ -501,6 +612,188 @@ static void LogDataPoint(void) {
            (unsigned long)HAL_GetTick(), freqHz, freqSource, syncRpm, rpmField,
            slipField, currentField, currentSource, knownLoadKg);
   UartPrint(line);
+
+  if (hmiMode == HMI_IDLE) {
+    HmiShowIdle();
+  }
+}
+
+// --- 16x2 I2C LCD (PCF8574 backpack, 4-bit mode) ---
+static void Lcd_I2cWrite(uint8_t data) {
+  HAL_I2C_Master_Transmit(&hi2c1, LCD_I2C_ADDR, &data, 1, 100);
+}
+
+static void Lcd_PulseEnable(uint8_t data) {
+  Lcd_I2cWrite(data | LCD_EN);
+  HAL_Delay(1);
+  Lcd_I2cWrite(data & ~LCD_EN);
+  HAL_Delay(1);
+}
+
+static void Lcd_SendNibble(uint8_t nibble, uint8_t rs) {
+  uint8_t data = (nibble & 0xF0) | LCD_BACKLIGHT | rs;
+  Lcd_I2cWrite(data);
+  Lcd_PulseEnable(data);
+}
+
+static void Lcd_SendByte(uint8_t value, uint8_t rs) {
+  Lcd_SendNibble(value & 0xF0, rs);
+  Lcd_SendNibble((uint8_t)(value << 4) & 0xF0, rs);
+}
+
+static void Lcd_Cmd(uint8_t cmd) { Lcd_SendByte(cmd, 0); }
+static void Lcd_Data(uint8_t data) { Lcd_SendByte(data, LCD_RS); }
+
+static void Lcd_Init(void) {
+  HAL_Delay(50); // wait for LCD power-on
+  Lcd_SendNibble(0x30, 0); HAL_Delay(5);
+  Lcd_SendNibble(0x30, 0); HAL_Delay(1);
+  Lcd_SendNibble(0x30, 0); HAL_Delay(1);
+  Lcd_SendNibble(0x20, 0); HAL_Delay(1); // switch to 4-bit mode
+  Lcd_Cmd(0x28); // 4-bit, 2 line, 5x8 font
+  Lcd_Cmd(0x0C); // display on, cursor off, blink off
+  Lcd_Cmd(0x06); // entry mode: auto-increment, no shift
+  Lcd_Cmd(0x01); // clear display
+  HAL_Delay(2);
+}
+
+static void Lcd_SetCursor(uint8_t row, uint8_t col) {
+  Lcd_Cmd((row == 0 ? 0x80 : 0xC0) + col);
+}
+
+// Prints a string padded/truncated to exactly 16 chars, so leftover characters
+// from a previous longer line don't linger on screen.
+static void Lcd_PrintLine(uint8_t row, const char *s) {
+  Lcd_SetCursor(row, 0);
+  char padded[17];
+  size_t i = 0;
+  for (; i < 16 && s[i] != '\0'; i++) {
+    padded[i] = s[i];
+  }
+  for (; i < 16; i++) {
+    padded[i] = ' ';
+  }
+  padded[16] = '\0';
+  for (i = 0; i < 16; i++) {
+    Lcd_Data((uint8_t)padded[i]);
+  }
+}
+
+// --- 4x4 matrix keypad ---
+static GPIO_TypeDef *const kpRowPorts[4] = {KP_R1_GPIO_Port, KP_R2_GPIO_Port, KP_R3_GPIO_Port, KP_R4_GPIO_Port};
+static const uint16_t kpRowPins[4] = {KP_R1_Pin, KP_R2_Pin, KP_R3_Pin, KP_R4_Pin};
+static GPIO_TypeDef *const kpColPorts[4] = {KP_C1_GPIO_Port, KP_C2_GPIO_Port, KP_C3_GPIO_Port, KP_C4_GPIO_Port};
+static const uint16_t kpColPins[4] = {KP_C1_Pin, KP_C2_Pin, KP_C3_Pin, KP_C4_Pin};
+
+static const char kpKeyMap[4][4] = {
+  {'1', '2', '3', 'A'},
+  {'4', '5', '6', 'B'},
+  {'7', '8', '9', 'C'},
+  {'*', '0', '#', 'D'},
+};
+
+// Returns the pressed key, or 0 if none. Debouncing is handled by the caller
+// (only act when the scanned key changes from the previous scan), not here.
+static char Keypad_Scan(void) {
+  for (int r = 0; r < 4; r++) {
+    HAL_GPIO_WritePin(kpRowPorts[r], kpRowPins[r], GPIO_PIN_RESET);
+    for (int c = 0; c < 4; c++) {
+      if (HAL_GPIO_ReadPin(kpColPorts[c], kpColPins[c]) == GPIO_PIN_RESET) {
+        HAL_GPIO_WritePin(kpRowPorts[r], kpRowPins[r], GPIO_PIN_SET);
+        return kpKeyMap[r][c];
+      }
+    }
+    HAL_GPIO_WritePin(kpRowPorts[r], kpRowPins[r], GPIO_PIN_SET);
+  }
+  return 0;
+}
+
+// --- HMI prompt/entry state machine ---
+// A/B/C/D pick what the next typed number means (mirrors the LOAD/RPM/FREQ/
+// CURRENT serial commands); 0-9 enter digits, '*' is the decimal point, '#'
+// confirms. This lets the rig be operated without a laptop tethered over USB.
+static void HmiShowIdle(void) {
+  char line1[17];
+  char line2[17];
+  snprintf(line1, sizeof(line1), "F:%.2fHz I:%.2fA", lastFreqHz, lastCurrentA);
+  snprintf(line2, sizeof(line2), "RPM:%s L:%.2fkg", haveManualRpm ? "set" : "---", knownLoadKg);
+  Lcd_PrintLine(0, line1);
+  Lcd_PrintLine(1, line2);
+}
+
+static const char *HmiModePrompt(HmiMode mode) {
+  switch (mode) {
+    case HMI_ENTER_LOAD: return "Load (kg):";
+    case HMI_ENTER_RPM: return "Actual RPM:";
+    case HMI_ENTER_FREQ: return "Freq (Hz):";
+    case HMI_ENTER_CURRENT: return "Current (A):";
+    default: return "";
+  }
+}
+
+static void HmiApplyEntry(void) {
+  float value = strtof(hmiEntryBuf, NULL);
+  char msg[48];
+  switch (hmiMode) {
+    case HMI_ENTER_LOAD:
+      knownLoadKg = value;
+      snprintf(msg, sizeof(msg), "# known load set to %.3f kg (HMI)\r\n", knownLoadKg);
+      break;
+    case HMI_ENTER_RPM:
+      manualActualRpm = value;
+      haveManualRpm = true;
+      snprintf(msg, sizeof(msg), "# actual RPM set to %.1f (HMI)\r\n", manualActualRpm);
+      break;
+    case HMI_ENTER_FREQ:
+      manualFreqHz = value;
+      haveManualFreq = true;
+      snprintf(msg, sizeof(msg), "# commanded frequency set to %.2f Hz (HMI)\r\n", manualFreqHz);
+      break;
+    case HMI_ENTER_CURRENT:
+      manualCurrentA = value;
+      haveManualCurrent = true;
+      snprintf(msg, sizeof(msg), "# output current set to %.2f A (HMI)\r\n", manualCurrentA);
+      break;
+    default:
+      return;
+  }
+  UartPrint(msg);
+}
+
+static void HandleKeypadKey(char key) {
+  if (key >= 'A' && key <= 'D') {
+    hmiMode = (key == 'A') ? HMI_ENTER_LOAD
+            : (key == 'B') ? HMI_ENTER_RPM
+            : (key == 'C') ? HMI_ENTER_FREQ
+                           : HMI_ENTER_CURRENT;
+    hmiEntryLen = 0;
+    hmiEntryBuf[0] = '\0';
+    Lcd_PrintLine(0, HmiModePrompt(hmiMode));
+    Lcd_PrintLine(1, "");
+    return;
+  }
+
+  if (hmiMode == HMI_IDLE) {
+    return; // digits/*/# do nothing until A/B/C/D picks what they're for
+  }
+
+  if (key >= '0' && key <= '9') {
+    if (hmiEntryLen < sizeof(hmiEntryBuf) - 1) {
+      hmiEntryBuf[hmiEntryLen++] = key;
+      hmiEntryBuf[hmiEntryLen] = '\0';
+      Lcd_PrintLine(1, hmiEntryBuf);
+    }
+  } else if (key == '*') {
+    if (hmiEntryLen < sizeof(hmiEntryBuf) - 1 && strchr(hmiEntryBuf, '.') == NULL) {
+      hmiEntryBuf[hmiEntryLen++] = '.';
+      hmiEntryBuf[hmiEntryLen] = '\0';
+      Lcd_PrintLine(1, hmiEntryBuf);
+    }
+  } else if (key == '#') {
+    HmiApplyEntry();
+    hmiMode = HMI_IDLE;
+    HmiShowIdle();
+  }
 }
 /* USER CODE END 4 */
 
