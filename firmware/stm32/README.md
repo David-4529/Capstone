@@ -74,6 +74,15 @@ label in step 2 wasn't set — go back to the Pinout view and add it to PA8, the
 regenerate code (this won't touch your `main.c` edits, CubeMX only touches the parts
 outside the `USER CODE` markers).
 
+## Running tests
+
+Use the PC logger in `tools/logger/` (see its README). It handles the commands below
+and saves each test to its own CSV. Type `TEST` and the board asks for the weight in
+kg. That starts a numbered test, and every row logged until `STOP` carries that test's
+`test_id` in the last CSV column (0 = no test running). `STOP` prints the test's
+steady-state averages, counting only rows logged after `RPM` was entered. Typed
+commands need the **USART2 global interrupt** enabled in the `.ioc` (NVIC Settings).
+
 ## Status LED (no serial needed)
 
 The green user LED (LD2) shows what the firmware is doing:

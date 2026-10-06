@@ -100,6 +100,20 @@ volatile float livePotSetpointHz = 0.0f;
 volatile uint32_t liveModbusOkCount = 0;
 volatile uint32_t liveModbusFailCount = 0;
 static volatile bool lastModbusOk = false;
+
+// Test sessions: TEST asks for the weight and starts a numbered test, STOP ends it and
+// prints a summary. Rows logged during a test carry its test_id (0 = no test running).
+static uint16_t testId = 0;
+static bool testActive = false;
+static bool awaitingWeight = false;
+static uint32_t testRows = 0;
+// Steady-state averages only count rows logged after RPM was entered, since the
+// operator types RPM once freq/current have settled.
+static uint32_t testSteadyRows = 0;
+static float sumFreqHz = 0.0f;
+static float sumCurrentA = 0.0f;
+static float sumActualRpm = 0.0f;
+static float sumSlip = 0.0f;
 static uint32_t lastLedToggleMs = 0;
 /* USER CODE END PV */
 
@@ -115,6 +129,8 @@ static void UartPrint(const char *s);
 static void HandleLine(const char *line);
 static void LogDataPoint(void);
 static void CheckVfdPotControl(void);
+static void StartTest(float loadKg);
+static void EndTest(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -166,12 +182,13 @@ int main(void)
 
   HAL_UART_Receive_IT(&huart2, &rxByte, 1);
 
-  UartPrint("# millis,freq_hz,freq_source,sync_rpm,actual_rpm,slip,current_a,current_source,known_load_kg\r\n");
+  UartPrint("# millis,freq_hz,freq_source,sync_rpm,actual_rpm,slip,current_a,current_source,known_load_kg,test_id\r\n");
   UartPrint("# send 'LOAD <kg>' 'RPM <value>' 'FREQ <hz>' 'CURRENT <amps>' over serial\r\n");
   UartPrint("# send 'DEBUG 0' to silence raw Modbus TX/RX hex dumps, 'DEBUG 1' to re-enable\r\n");
   UartPrint("# send 'VFDCHECK' to re-check that the drive is set up for pot speed control\r\n");
 
   CheckVfdPotControl();
+  UartPrint("# type TEST to start a test (it asks for the weight), STOP to end it\r\n");
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -484,8 +501,42 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 
 static void HandleLine(const char *line) {
   float value;
-  char msg[48];
-  if (strcmp(line, "VFDCHECK") == 0) {
+  char msg[112];
+  if (awaitingWeight) {
+    if (strcmp(line, "CANCEL") == 0) {
+      awaitingWeight = false;
+      UartPrint("# test cancelled\r\n");
+    } else if (sscanf(line, "%f", &value) == 1 && value >= 0.0f) {
+      awaitingWeight = false;
+      StartTest(value);
+    } else {
+      UartPrint("# enter the weight in kg as a number (e.g. 2.5, or 0 for no load), or CANCEL\r\n");
+    }
+    return;
+  }
+
+  if (strcmp(line, "TEST") == 0) {
+    if (testActive) {
+      snprintf(msg, sizeof(msg), "# test %u is still running - type STOP first\r\n", testId);
+      UartPrint(msg);
+    } else {
+      awaitingWeight = true;
+      UartPrint("# TEST: what weight are you using? Enter it in kg (0 for no load):\r\n");
+    }
+  } else if (sscanf(line, "START %f", &value) == 1) {
+    if (testActive) {
+      snprintf(msg, sizeof(msg), "# test %u is still running - type STOP first\r\n", testId);
+      UartPrint(msg);
+    } else {
+      StartTest(value);
+    }
+  } else if (strcmp(line, "STOP") == 0) {
+    if (testActive) {
+      EndTest();
+    } else {
+      UartPrint("# no test running - type TEST to start one\r\n");
+    }
+  } else if (strcmp(line, "VFDCHECK") == 0) {
     CheckVfdPotControl();
   } else if (sscanf(line, "LOAD %f", &value) == 1) {
     knownLoadKg = value;
@@ -510,7 +561,50 @@ static void HandleLine(const char *line) {
     modbusDebug = (value != 0.0f);
     snprintf(msg, sizeof(msg), "# modbus debug logging %s\r\n", modbusDebug ? "ON" : "OFF");
     UartPrint(msg);
+  } else {
+    snprintf(msg, sizeof(msg), "# unknown command: '%s'\r\n", line);
+    UartPrint(msg);
   }
+}
+
+static void StartTest(float loadKg) {
+  char msg[96];
+  testId++;
+  testActive = true;
+  knownLoadKg = loadKg;
+  haveManualRpm = false; // force a fresh RPM reading for this test
+  testRows = 0;
+  testSteadyRows = 0;
+  sumFreqHz = 0.0f;
+  sumCurrentA = 0.0f;
+  sumActualRpm = 0.0f;
+  sumSlip = 0.0f;
+  snprintf(msg, sizeof(msg), "# TEST %u START load_kg=%.3f\r\n", testId, knownLoadKg);
+  UartPrint(msg);
+  UartPrint("# run the motor up, wait for freq_hz/current_a to settle, then type RPM <value>\r\n");
+  UartPrint("# from the SERVO display. Type STOP when the test is done.\r\n");
+}
+
+static void EndTest(void) {
+  char msg[200];
+  testActive = false;
+  if (testSteadyRows > 0) {
+    float n = (float)testSteadyRows;
+    snprintf(msg, sizeof(msg),
+             "# TEST %u END load_kg=%.3f rows=%lu steady_rows=%lu avg_freq_hz=%.2f avg_current_a=%.3f avg_rpm=%.1f avg_slip=%.4f\r\n",
+             testId, knownLoadKg, (unsigned long)testRows, (unsigned long)testSteadyRows,
+             sumFreqHz / n, sumCurrentA / n, sumActualRpm / n, sumSlip / n);
+  } else {
+    snprintf(msg, sizeof(msg),
+             "# TEST %u END load_kg=%.3f rows=%lu steady_rows=0 avg_freq_hz=NA avg_current_a=NA avg_rpm=NA avg_slip=NA\r\n",
+             testId, knownLoadKg, (unsigned long)testRows);
+  }
+  UartPrint(msg);
+  if (testSteadyRows == 0) {
+    UartPrint("# no steady rows - RPM was never entered during this test\r\n");
+  }
+  haveManualRpm = false; // don't carry this test's RPM into idle rows or the next test
+  UartPrint("# type TEST to start the next test\r\n");
 }
 
 static void LogDataPoint(void) {
@@ -546,7 +640,7 @@ static void LogDataPoint(void) {
     slip = (syncRpm - actualRpm) / syncRpm;
   }
 
-  float currentA;
+  float currentA = 0.0f;
   const char *currentSource;
   bool haveCurrent;
   if (ModbusReadHoldingRegister(REG_OUTPUT_CURRENT, &raw)) {
@@ -581,10 +675,22 @@ static void LogDataPoint(void) {
     strcpy(currentField, "NA");
   }
 
+  if (testActive) {
+    testRows++;
+    if (haveRpm && haveCurrent) {
+      testSteadyRows++;
+      sumFreqHz += freqHz;
+      sumCurrentA += currentA;
+      sumActualRpm += actualRpm;
+      sumSlip += slip;
+    }
+  }
+
   char line[160];
-  snprintf(line, sizeof(line), "%lu,%.2f,%s,%.1f,%s,%s,%s,%s,%.3f\r\n",
+  snprintf(line, sizeof(line), "%lu,%.2f,%s,%.1f,%s,%s,%s,%s,%.3f,%u\r\n",
            (unsigned long)HAL_GetTick(), freqHz, freqSource, syncRpm, rpmField,
-           slipField, currentField, currentSource, knownLoadKg);
+           slipField, currentField, currentSource, knownLoadKg,
+           (unsigned)(testActive ? testId : 0));
   UartPrint(line);
 }
 
