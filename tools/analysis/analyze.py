@@ -1,7 +1,8 @@
 """Slip / current analysis for the load-estimation rig.
 
 Reads a results folder containing:
-  *_summary_*.csv   summary files written by tools/logger/vfd_logger.py (one per session)
+  *_summary_*.xlsx  summary workbooks written by tools/logger/vfd_logger.py (one per
+                    session) - older sessions logged as *_summary_*.csv are read too
   rpm_notes.csv     shaft RPM read off the ActiveServo display, per run:
                     session,run,direction,rpm_low,rpm_high,direction_source,note
 
@@ -23,6 +24,11 @@ import statistics
 import sys
 from collections import defaultdict
 
+try:
+    from openpyxl import load_workbook
+except ImportError:
+    load_workbook = None
+
 UP_COLOR = "#2a78d6"     # categorical slot 1
 DOWN_COLOR = "#eb6834"   # categorical slot 2
 INK = "#0b0b0b"
@@ -43,18 +49,34 @@ def fnum(text):
 
 
 def session_of(path):
-    # "2026-10-05_2139_summary_base0kg.csv" -> "2026-10-05_2139"
+    # "2026-10-05_2139_summary_base0kg.xlsx" -> "2026-10-05_2139"
     name = os.path.basename(path)
     return name.split("_summary_")[0]
 
 
 def load_summaries(folder):
     runs = {}
-    for path in sorted(glob.glob(os.path.join(folder, "*_summary_*.csv"))):
+    paths = (sorted(glob.glob(os.path.join(folder, "*_summary_*.xlsx")))
+             + sorted(glob.glob(os.path.join(folder, "*_summary_*.csv"))))
+    for path in paths:
         session = session_of(path)
-        with open(path, newline="", encoding="utf-8") as f:
-            for row in csv.DictReader(f):
-                runs[(session, row["run"])] = dict(row, session=session, summary_file=os.path.basename(path))
+        name = os.path.basename(path)
+        if path.endswith(".xlsx"):
+            if load_workbook is None:
+                sys.exit("openpyxl is not installed. Run:  pip install openpyxl")
+            ws = load_workbook(path, read_only=True, data_only=True).active
+            rows_iter = ws.iter_rows(values_only=True)
+            header = list(next(rows_iter))
+            for values in rows_iter:
+                if values[0] is None:
+                    continue  # trailing blank row
+                row = dict(zip(header, values))
+                row.setdefault("file", row.get("run_label", ""))
+                runs[(session, str(row["run"]))] = dict(row, session=session, summary_file=name)
+        else:
+            with open(path, newline="", encoding="utf-8") as f:
+                for row in csv.DictReader(f):
+                    runs[(session, row["run"])] = dict(row, session=session, summary_file=name)
     return runs
 
 

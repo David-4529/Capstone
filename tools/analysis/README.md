@@ -1,8 +1,10 @@
 # Analysis
 
 `analyze.py` turns logger summaries plus hand-recorded shaft RPM into slip results and plots.
+Reads both the current `*_summary_*.xlsx` workbooks (needs `pip install openpyxl`) and the
+older `*_summary_*.csv` files from before the logger switched to Excel output.
 
-1. Copy the session `*_summary_*.csv` files into a results folder (e.g. `results/2026-10-05/`).
+1. Copy the session summary files into a results folder (e.g. `results/2026-10-05/`).
 2. Add `rpm_notes.csv` there, one line per run you read the RPM for:
    `session,run,direction,rpm_low,rpm_high,direction_source,note`
    (`session` is the summary file's date-time prefix, e.g. `2026-10-05_2139`).

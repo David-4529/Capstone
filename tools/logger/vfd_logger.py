@@ -2,15 +2,17 @@
 
 Connects to the Nucleo's ST-LINK virtual COM port and saves every motor run
 automatically - no TEST/STOP needed. At startup it asks for the baseline weight
-(hook + scale) and the test weight on the hook. Each time the motor runs, that run
-is saved to its own CSV; when the motor stops, the logger asks for the RPM shown on
-the SERVO display and adds one line to the summary.
+(hook + scale) and the test weight on the hook. Each time the motor runs, its
+steady-state averages are kept in memory; when the motor stops, the logger asks
+for the RPM shown on the SERVO display and adds one row to the summary workbook.
 
   data/2026-10-05_2106_base0.35kg/                         one folder per session
-    2026-10-05_210712_run01_load2.5kg_base0.35kg.csv       one file per motor run
-    2026-10-05_2106_summary_base0.35kg.csv                 one line per run
-    2026-10-05_2106_all_rows_base0.35kg.csv                every row, runs and idle
+    2026-10-05_2106_summary_base0.35kg.xlsx                one row per run (Excel)
     2026-10-05_2106_session_log.txt                        everything sent/received
+
+Only these two files are written - no per-run CSV and no all-rows file - so a
+session folder stays short and the summary opens directly in Excel, already
+editable (no CSV import step).
 
 Commands typed in the window:
   291 / 291 down     after a run: the SERVO RPM (and optionally the direction)
@@ -27,7 +29,6 @@ Type QUIT (or press Ctrl+C) to exit.
 """
 
 import argparse
-import csv
 import datetime
 import os
 import re
@@ -42,6 +43,11 @@ try:
 except ImportError:
     sys.exit("pyserial is not installed. Run:  pip install pyserial")
 
+try:
+    from openpyxl import Workbook
+except ImportError:
+    sys.exit("openpyxl is not installed. Run:  pip install openpyxl")
+
 # Matches the firmware's CSV header; replaced by the header line the board prints
 # at startup ("# millis,freq_hz,...") if the logger sees it.
 DEFAULT_COLUMNS = [
@@ -51,7 +57,7 @@ DEFAULT_COLUMNS = [
 SUMMARY_COLUMNS = [
     "pc_time", "run", "direction", "load_kg", "baseline_kg", "total_kg", "run_s",
     "rows", "steady_rows", "avg_freq_hz", "avg_current_a", "sync_rpm", "actual_rpm",
-    "slip", "file",
+    "slip", "run_label",
 ]
 STLINK_VID = 0x0483
 RUNNING_FREQ_HZ = 0.5  # output frequency above this counts as "motor running"
@@ -133,16 +139,32 @@ class Logger:
         prefix = f"{session_stamp}_"
         self.session_log = open(os.path.join(out_dir, f"{prefix}session_log.txt"), "a", encoding="utf-8")
         self.session_log.write(f"{now_str()} baseline_kg={baseline_kg:g} load_kg={load_kg:g}\n")
-        self.all_rows_file = open(os.path.join(out_dir, f"{prefix}all_rows_{self.base_label}.csv"),
-                                  "a", newline="", encoding="utf-8")
-        self.all_rows = csv.writer(self.all_rows_file)
-        self.all_rows.writerow(["pc_time"] + self.columns)
 
-        summary_path = os.path.join(out_dir, f"{prefix}summary_{self.base_label}.csv")
-        self.summary_name = os.path.basename(summary_path)
-        self.summary_file = open(summary_path, "a", newline="", encoding="utf-8")
-        self.summary = csv.writer(self.summary_file)
-        self.summary.writerow(SUMMARY_COLUMNS)
+        self.summary_path = os.path.join(out_dir, f"{prefix}summary_{self.base_label}.xlsx")
+        self.summary_name = os.path.basename(self.summary_path)
+        if os.path.exists(self.summary_path):
+            # Re-opening an existing session (e.g. after a crash): append, don't overwrite.
+            from openpyxl import load_workbook
+            self.wb = load_workbook(self.summary_path)
+            self.ws = self.wb.active
+        else:
+            self.wb = Workbook()
+            self.ws = self.wb.active
+            self.ws.title = "Summary"
+            self.ws.append(SUMMARY_COLUMNS)
+            self.wb.save(self.summary_path)
+
+        # Column number-formats for the numeric fields written by write_summary(),
+        # keyed by SUMMARY_COLUMNS index (0-based) so Excel shows sensible decimals
+        # instead of raw floats.
+        self._col_formats = {
+            SUMMARY_COLUMNS.index("run_s"): "0.0",
+            SUMMARY_COLUMNS.index("avg_freq_hz"): "0.00",
+            SUMMARY_COLUMNS.index("avg_current_a"): "0.000",
+            SUMMARY_COLUMNS.index("sync_rpm"): "0.0",
+            SUMMARY_COLUMNS.index("actual_rpm"): "0.0",
+            SUMMARY_COLUMNS.index("slip"): "0.0000",
+        }
 
     # --- receiving -------------------------------------------------------------
     def reader_loop(self):
@@ -181,25 +203,20 @@ class Logger:
                     cols = line[2:].split(",")
                     if cols != self.columns:
                         self.columns = cols
-                        self.all_rows.writerow(["pc_time"] + self.columns)
                 return
 
             fields = line.split(",")
             if len(fields) != len(self.columns):
                 return  # partial/garbled line - kept in the session log only
-            self.all_rows.writerow([stamp] + fields)
-            self.all_rows_file.flush()
             row = dict(zip(self.columns, fields))
             running = self.is_running(row)
-            # Idle rows are saved but not shown, so the screen stays still while you type.
+            # Idle rows aren't shown, so the screen stays still while you type.
             if self.show_all or running or self.run is not None:
                 print(line)
 
             if running and self.run is None:
                 self.start_run()
             if self.run is not None:
-                self.run["writer"].writerow([stamp] + fields)
-                self.run["file"].flush()
                 self.run["rows"].append(row)
                 elapsed = time.monotonic() - self.run["t0"]
                 if running and not self.run["warned"] and elapsed >= self.max_run_s:
@@ -221,26 +238,23 @@ class Logger:
             print(f">> run {self.pending['n']}: no RPM entered - saved without it")
             self.write_summary(self.pending, None, "")
         self.run_count += 1
-        name = (f"{datetime.datetime.now():%Y-%m-%d_%H%M%S}_run{self.run_count:02d}"
-                f"_load{kg_label(self.load_kg)}_{self.base_label}.csv")
-        f = open(os.path.join(self.out_dir, name), "w", newline="", encoding="utf-8")
-        writer = csv.writer(f)
-        writer.writerow(["pc_time"] + self.columns + ["load_kg_test", "baseline_kg"])
-        self.run = {"n": self.run_count, "name": name, "file": f, "writer": writer,
+        # A readable label for the summary row - no file is written for the run itself.
+        label = (f"{datetime.datetime.now():%Y-%m-%d_%H%M%S}_run{self.run_count:02d}"
+                 f"_load{kg_label(self.load_kg)}_{self.base_label}")
+        self.run = {"n": self.run_count, "name": label,
                     "rows": [], "t0": time.monotonic(), "warned": False, "load": self.load_kg}
 
     def end_run(self):
         run = self.run
         self.run = None
-        run["file"].close()
         run["seconds"] = time.monotonic() - run["t0"]
         run.update(self.steady_stats(run["rows"]))
         self.pending = run
         if run["steady_rows"]:
             print(f">> run {run['n']} saved ({run['seconds']:.1f} s): {run['avg_freq_hz']:.2f} Hz, "
-                  f"{run['avg_current_a']:.3f} A over {run['steady_rows']} steady rows -> {run['name']}")
+                  f"{run['avg_current_a']:.3f} A over {run['steady_rows']} steady rows")
         else:
-            print(f">> run {run['n']} saved ({run['seconds']:.1f} s) - too short, no steady speed -> {run['name']}")
+            print(f">> run {run['n']} saved ({run['seconds']:.1f} s) - too short, no steady speed")
         print(f">> type the SERVO RPM for run {run['n']} (e.g. 291, or 291 down) and press Enter,"
               f" or just Enter to skip")
 
@@ -267,18 +281,21 @@ class Logger:
         }
 
     def write_summary(self, run, rpm, direction):
-        slip = ""
+        slip = None
         if rpm is not None and run.get("sync_rpm"):
-            slip = f"{(run['sync_rpm'] - rpm) / run['sync_rpm']:.4f}"
-        fmt = lambda key, spec: format(run[key], spec) if key in run else ""
-        self.summary.writerow([
-            now_str(), run["n"], direction, f"{run['load']:g}", f"{self.baseline_kg:g}",
-            f"{run['load'] + self.baseline_kg:g}", f"{run['seconds']:.1f}", len(run["rows"]),
-            run["steady_rows"], fmt("avg_freq_hz", ".2f"), fmt("avg_current_a", ".3f"),
-            fmt("sync_rpm", ".1f"), "" if rpm is None else f"{rpm:g}", slip, run["name"],
-        ])
-        self.summary_file.flush()
-        return slip
+            slip = (run["sync_rpm"] - rpm) / run["sync_rpm"]
+        row_values = [
+            now_str(), run["n"], direction, run["load"], self.baseline_kg,
+            run["load"] + self.baseline_kg, run["seconds"], len(run["rows"]),
+            run["steady_rows"], run.get("avg_freq_hz"), run.get("avg_current_a"),
+            run.get("sync_rpm"), rpm, slip, run["name"],
+        ]
+        self.ws.append(row_values)
+        row_idx = self.ws.max_row
+        for col_idx, number_format in self._col_formats.items():
+            self.ws.cell(row=row_idx, column=col_idx + 1).number_format = number_format
+        self.wb.save(self.summary_path)
+        return f"{slip:.4f}" if slip is not None else ""
 
     # --- typed input -----------------------------------------------------------
     def handle_input(self, text):
@@ -333,12 +350,15 @@ class Logger:
         with self.lock:
             self.closed = True
             if self.run is not None:
-                self.run["file"].close()
-                print(f">> run {self.run['n']} was still going - its rows are saved in {self.run['name']}")
+                run = self.run
+                run["seconds"] = time.monotonic() - run["t0"]
+                run.update(self.steady_stats(run["rows"]))
+                print(f">> run {run['n']} was still going - saved without a final RPM reading")
+                self.write_summary(run, None, "")
             if self.pending is not None:
                 self.write_summary(self.pending, None, "")
-            for f in (self.session_log, self.all_rows_file, self.summary_file):
-                f.close()
+            self.wb.save(self.summary_path)
+            self.session_log.close()
 
 
 def main():

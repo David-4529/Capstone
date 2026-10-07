@@ -1,7 +1,8 @@
 # VFD test logger (PC side)
 
 Logs the STM32's data stream over the Nucleo's USB port (ST-LINK virtual COM port),
-lets you type commands to the board, and saves each test to its own CSV.
+lets you type commands to the board, and saves each session's results straight to an
+Excel workbook - no CSV import step needed to edit or plot it.
 
 ## One-time setup
 
@@ -31,10 +32,10 @@ After that, **every motor run is saved automatically**. You don't need TEST or S
 
 ```
                      hold UP; rows scroll while the motor runs; release
->> run 1 saved (5.8 s): 10.00 Hz, 0.660 A over 18 steady rows -> ..._run01_load0kg_base0.35kg.csv
+>> run 1 saved (5.8 s): 10.00 Hz, 0.660 A over 18 steady rows
 >> type the SERVO RPM for run 1 (e.g. 291, or 291 down) ...
 291 up               the RPM you read on the display (+ direction, optional)
->> run 1: RPM 291 up, slip 0.0300 -> added to ..._summary_base0.35kg.csv
+>> run 1: RPM 291 up, slip 0.0300 -> added to ..._summary_base0.35kg.xlsx
                      lower with DOWN: also saved as a run; type its RPM + "down",
                      or press Enter to skip it
 WEIGHT 2.5           change the test weight before the next runs
@@ -57,18 +58,18 @@ how far the cable moved, then adjust: `run_logger.bat --max-run 4`.
 
 ## Output files
 
-To skip the startup questions, run `run_logger.bat --baseline 0.35 --weight 2.5`. The baseline goes into every file
-name and into the summary (`baseline_kg`, and `total_kg` = load + baseline).
+To skip the startup questions, run `run_logger.bat --baseline 0.35 --weight 2.5`. The baseline goes into the
+file name and into the summary (`baseline_kg`, and `total_kg` = load + baseline).
 
-Each run creates a folder named after the date, time and baseline:
+Each session creates a folder named after the date, time and baseline, with just two files in it:
 
 | File (example) | Contents |
 |---|---|
 | `data/2026-10-05_2106_base0.35kg/` | The session folder |
-| `2026-10-05_210712_run01_load2.5kg_base0.35kg.csv` | Every row from one motor run |
-| `2026-10-05_2106_summary_base0.35kg.csv` | One line per run: direction, load, baseline, total, steady averages, RPM, slip |
-| `2026-10-05_2106_all_rows_base0.35kg.csv` | Every row in the session, including idle time |
-| `2026-10-05_2106_session_log.txt` | Everything sent and received, with PC timestamps |
+| `2026-10-05_2106_summary_base0.35kg.xlsx` | One row per run: direction, load, baseline, total, steady averages, RPM, slip - a real Excel workbook, edit it directly |
+| `2026-10-05_2106_session_log.txt` | Everything sent and received, with PC timestamps (plain text, for troubleshooting) |
 
-All CSVs open directly in Excel. The summary file is the one to plot (load vs. slip,
-load vs. current).
+There's no per-run file and no all-rows file - every row the board sends is still used
+to compute each run's steady-state averages, it's just kept in memory rather than
+written to disk, so a session folder stays to these two files. The `.xlsx` is the one
+to plot (load vs. slip, load vs. current) and the one `tools/analysis/analyze.py` reads.
