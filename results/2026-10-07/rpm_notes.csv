@@ -1,0 +1,5 @@
+session,run,direction,rpm_low,rpm_high,direction_source,note
+2026-10-07_1903,8,down,46,48,recorded,1.46kg box; clean 17.4s continuous down run (no stop/restart)
+2026-10-07_1903,11,down,46,48,recorded,1.46kg box; clean 27.1s continuous down run - longest of the four
+2026-10-07_1903,15,down,46,48,recorded,1.46kg box; clean 10.5s continuous down run
+2026-10-07_1903,16,down,46,48,recorded,1.46kg box; clean 22.2s continuous down run

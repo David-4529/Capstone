@@ -45,3 +45,48 @@ Observations:
 - Friction/gravity split (slip RPM): average of up and down ≈ friction (~8 RPM),
   half the difference ≈ the hook's weight (~4–5 RPM).
 - The display jitters ±1–1.5 RPM. At 2.4 Hz that's about ±2% slip, at 1.4 Hz about ±3.6%.
+
+## 2026-10-07: first loaded test (1.46 kg metal box, baseline correctly entered as 0 kg)
+
+Up direction (lifting) ran at 1.39 Hz, same as the no-load baseline. The down direction
+(lowering) was run at a different pot setting, ~1.52 Hz — hand pot control, not matched
+to the up frequency on purpose.
+
+**Up**: shaft RPM read as 18–21 (same range as the unloaded hook in the first,
+mislabeled attempt at this weight — see note below). Logged as a single ~39 s
+continuous run; no separate summary row captured for it this session.
+
+**Down**: four runs held long enough with no stop/restart to trust (session
+`2026-10-07_1903`, see `results/2026-10-07/`). Shaft RPM read as 46–48 for all four.
+
+| Run | Run time (s) | Freq (Hz) | Sync RPM | Current (A) | Slip RPM (46–48 RPM) | Slip |
+|---|---|---|---|---|---|---|
+| 8 | 17.4 | 1.51 | 45.2 | 0.570 | −0.8 to −2.8 | −0.018 to −0.062 |
+| 11 | 27.1 | 1.52 | 45.7 | 0.610 | −0.3 to −2.3 | −0.007 to −0.050 |
+| 15 | 10.5 | 1.53 | 45.8 | 0.470 | −0.2 to −2.2 | −0.004 to −0.048 |
+| 16 | 22.2 | 1.52 | 45.7 | 0.573 | −0.3 to −2.3 | −0.007 to −0.050 |
+
+Runs 11 and 16 (27.1 s and 22.2 s) were the longest, cleanest holds; 8 and 15 were also
+unbroken but shorter. The other down-direction runs that session (9, 10, 12–14, 17, 18)
+were 1–3 s stutters from stopping to help the descent along and are excluded.
+
+**Key finding — slip is negative on every down run.** The measured shaft speed
+(46–48 RPM) meets or exceeds the synchronous speed implied by the output frequency
+(45.2–45.8 RPM) in every case. This means the descending load is overhauling the motor,
+not being speed-controlled by it: with this drive's open-loop V/Hz control and no
+dynamic braking resistor, there is nothing to absorb the regenerative energy of a load
+that wants to fall faster than the commanded frequency, so during descent the frequency
+reading doesn't reflect real speed control — gravity sets the pace. This is consistent
+with the free-fall-on-stop behavior already seen in the first (unloaded hook) session.
+
+**Implication for the load model**: up-direction slip remains a valid motoring-condition
+signal and is usable for the slip-vs-load calibration. Down-direction data under load is
+not comparable to it (different physical regime — overhauling vs. motoring) and should
+be reported as a separate limitation/finding, not combined into the same calibration
+curve as the up-direction points.
+
+Note: in this project's very first weighted attempt (same 1.46 kg box, earlier that same
+day), the box's weight was entered as the *baseline* rather than the *load*, and no RPM
+was typed into the logger for any run — see the session's own commit history. This
+2026-10-07_1903 session repeats it correctly (load_kg=1.46, baseline_kg=0) and is the
+one to use going forward.

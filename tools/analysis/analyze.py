@@ -203,7 +203,11 @@ def plot_vs(groups_rows, x_key, y_key, y_err_key, xlabel, ylabel, title, path, p
     ax.set_ylabel(ylabel, color=INK, fontsize=10)
     ax.set_title(title, color=INK, fontsize=11, loc="left")
     ax.legend(frameon=False, fontsize=9, labelcolor=INK_2)
-    ax.set_ylim(bottom=0)
+    # Only pin the bottom to 0 when every value is non-negative - otherwise (e.g. an
+    # overhauling/negative-slip descent) that would clip real data off the chart.
+    all_y = [g[y_key] for g in groups_rows]
+    if all_y and min(all_y) >= 0:
+        ax.set_ylim(bottom=0)
     fig.tight_layout()
     fig.savefig(path, facecolor=SURFACE)
     plt.close(fig)
@@ -221,19 +225,26 @@ def make_plots(groups_rows, out_dir):
     loads = sorted({g["total_kg"] for g in groups_rows})
     print(">> plots:")
     if len(loads) == 1:
-        # Baseline only: show how slip and current behave across test frequency.
+        # Only one load value present - show how slip and current behave across test
+        # frequency. Label and name the files by whether that one value is actually
+        # no-load (0 kg) or a single loaded weight, so a one-weight session doesn't
+        # get mislabeled "No-load".
+        load_val = loads[0]
+        is_baseline = abs(load_val) < 1e-9
+        prefix = "baseline" if is_baseline else f"load{load_val:g}kg".replace(".", "p")
+        suffix = "" if is_baseline else f" ({load_val:g} kg load)"
         sub = [dict(g, slip_err=max(g["slip_std"], g["slip_reading_unc"])) for g in groups_rows]
         for g in sub:
             g["slip_rpm_err"] = max(g["slip_rpm_std"], g["slip_reading_unc"] * g["freq_hz"] * 30)
         plot_vs(sub, "freq_hz", "slip_rpm_mean", "slip_rpm_err", "Drive output frequency (Hz)",
-                "Slip (RPM)", f"No-load slip RPM vs frequency (total load {loads[0]:g} kg)",
-                os.path.join(out_dir, "baseline_slip_rpm_vs_freq.png"), plt)
+                "Slip (RPM)", f"Slip RPM vs frequency{suffix}",
+                os.path.join(out_dir, f"{prefix}_slip_rpm_vs_freq.png"), plt)
         plot_vs(sub, "freq_hz", "slip_mean", "slip_err", "Drive output frequency (Hz)",
-                "Slip (per unit)", "No-load slip vs frequency",
-                os.path.join(out_dir, "baseline_slip_vs_freq.png"), plt)
+                "Slip (per unit)", f"Slip vs frequency{suffix}",
+                os.path.join(out_dir, f"{prefix}_slip_vs_freq.png"), plt)
         plot_vs(sub, "freq_hz", "current_mean", "current_std", "Drive output frequency (Hz)",
-                "Output current (A)", "No-load current vs frequency",
-                os.path.join(out_dir, "baseline_current_vs_freq.png"), plt)
+                "Output current (A)", f"Current vs frequency{suffix}",
+                os.path.join(out_dir, f"{prefix}_current_vs_freq.png"), plt)
         return
     # Loaded data: one calibration plot per test frequency.
     for fbin in sorted({g["freq_hz"] for g in groups_rows}):

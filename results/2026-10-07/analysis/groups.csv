@@ -1,0 +1,2 @@
+freq_hz,direction,total_kg,n,slip_mean,slip_std,slip_rpm_mean,slip_rpm_std,current_mean,current_std,slip_reading_unc
+1.5200,down,1.4600,4,-0.0307,0.0062,-1.4000,0.2708,0.5557,0.0600,0.0221

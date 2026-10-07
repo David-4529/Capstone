@@ -1,0 +1,5 @@
+session,run,direction,direction_source,freq_hz,sync_rpm,current_a,steady_rows,load_kg,baseline_kg,total_kg,rpm,rpm_unc,slip_rpm,slip,slip_unc,file,note
+2026-10-07_1903,8,down,recorded,1.5100,45.20,0.5700,67,1.4600,0.0000,1.4600,47.00,1.0000,-1.8000,-0.0398,0.0221,2026-10-07_190450_run08_load1.46kg_base0kg,1.46kg box; clean 17.4s continuous down run (no stop/restart)
+2026-10-07_1903,11,down,recorded,1.5200,45.70,0.6100,103,1.4600,0.0000,1.4600,47.00,1.0000,-1.3000,-0.0284,0.0219,2026-10-07_190513_run11_load1.46kg_base0kg,1.46kg box; clean 27.1s continuous down run - longest of the four
+2026-10-07_1903,15,down,recorded,1.5300,45.80,0.4700,41,1.4600,0.0000,1.4600,47.00,1.0000,-1.2000,-0.0262,0.0218,2026-10-07_190549_run15_load1.46kg_base0kg,1.46kg box; clean 10.5s continuous down run
+2026-10-07_1903,16,down,recorded,1.5200,45.70,0.5730,87,1.4600,0.0000,1.4600,47.00,1.0000,-1.3000,-0.0284,0.0219,2026-10-07_190602_run16_load1.46kg_base0kg,1.46kg box; clean 22.2s continuous down run
