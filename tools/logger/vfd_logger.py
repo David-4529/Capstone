@@ -1,14 +1,16 @@
 """PC-side logger for the STM32 slip/load test rig.
 
 Connects to the Nucleo's ST-LINK virtual COM port and saves every motor run
-automatically - no TEST/STOP needed. At startup it asks for the baseline weight
-(hook + scale) and the test weight on the hook. Each time the motor runs, its
-steady-state averages are kept in memory; when the motor stops, the logger asks
-for the RPM shown on the SERVO display and adds one row to the summary workbook.
+automatically - no TEST/STOP needed. At startup it asks three questions: what
+equipment is on the hook, how much it weighs, and what frequency you intend to
+test it at. Those three answers name the session. Each time the motor runs,
+its steady-state averages are kept in memory; when the motor stops, the logger
+asks for the RPM shown on the SERVO display and adds one row to the summary
+workbook.
 
-  data/2026-10-05_2106_base0.35kg/                         one folder per session
-    2026-10-05_2106_summary_base0.35kg.xlsx                one row per run (Excel)
-    2026-10-05_2106_session_log.txt                        everything sent/received
+  data/2026-10-07_Metalhousing_baseweight-1.46kg_testedfreq-6.36hz/
+    2026-10-07_Metalhousing_baseweight-1.46kg_testedfreq-6.36hz_summary.xlsx
+    2026-10-07_Metalhousing_baseweight-1.46kg_testedfreq-6.36hz_session_log.txt
 
 Only these two files are written - no per-run CSV and no all-rows file - so a
 session folder stays short and the summary opens directly in Excel, already
@@ -17,7 +19,7 @@ editable (no CSV import step).
 Commands typed in the window:
   291 / 291 down     after a run: the SERVO RPM (and optionally the direction)
   Enter              after a run: skip the RPM
-  WEIGHT 2.5         change the test weight for the following runs
+  WEIGHT 2.5         change the equipment weight for the following runs
   QUIT               save and exit
 Anything else (VFDCHECK, DEBUG 1, ...) is sent to the board.
 
@@ -54,10 +56,12 @@ DEFAULT_COLUMNS = [
     "millis", "freq_hz", "freq_source", "sync_rpm", "actual_rpm", "slip",
     "current_a", "current_source", "known_load_kg", "test_id", "steady",
 ]
+# One row per run. "weight_kg" and "target_freq_hz" repeat the session's own
+# identity (also in the file name) so a row still makes sense if this sheet is
+# ever copied out on its own; everything else is measured, not typed in twice.
 SUMMARY_COLUMNS = [
-    "pc_time", "run", "direction", "load_kg", "baseline_kg", "total_kg", "run_s",
-    "rows", "steady_rows", "avg_freq_hz", "avg_current_a", "sync_rpm", "actual_rpm",
-    "slip", "run_label",
+    "run", "direction", "weight_kg", "target_freq_hz", "start_time", "run_s",
+    "steady_rows", "avg_freq_hz", "avg_current_a", "sync_rpm", "actual_rpm", "slip",
 ]
 STLINK_VID = 0x0483
 RUNNING_FREQ_HZ = 0.5  # output frequency above this counts as "motor running"
@@ -100,13 +104,33 @@ def kg_label(kg):
     return f"{float(kg):g}kg"
 
 
+def hz_label(hz):
+    return f"{float(hz):g}hz"
+
+
+def safe_name(text):
+    # Strips spaces and anything that isn't safe in a file/folder name, so
+    # "Metal housing" -> "Metalhousing" instead of needing manual cleanup later.
+    cleaned = re.sub(r"[^A-Za-z0-9_-]", "", text)
+    return cleaned or "equipment"
+
+
+def ask_text(question):
+    while True:
+        try:
+            text = input(f">> {question}: ").strip()
+        except EOFError:
+            return "equipment"
+        if text:
+            return text
+        print(">> type something, e.g. Metal housing")
+
+
 def ask_kg(question):
     while True:
         try:
-            text = input(f">> {question} (kg, Enter = 0): ").strip()
+            text = input(f">> {question} (kg): ").strip()
         except EOFError:
-            return 0.0
-        if not text:
             return 0.0
         try:
             kg = float(text)
@@ -114,18 +138,34 @@ def ask_kg(question):
                 return kg
         except ValueError:
             pass
-        print(">> enter a number, e.g. 0.35")
+        print(">> enter a number, e.g. 1.46")
+
+
+def ask_hz(question):
+    while True:
+        try:
+            text = input(f">> {question} (Hz): ").strip()
+        except EOFError:
+            return 0.0
+        try:
+            hz = float(text)
+            if hz >= 0:
+                return hz
+        except ValueError:
+            pass
+        print(">> enter a number, e.g. 6.36")
 
 
 class Logger:
-    def __init__(self, ser, out_dir, max_run_s, show_all, baseline_kg, load_kg, session_stamp):
+    def __init__(self, ser, out_dir, max_run_s, show_all, equipment_name, weight_kg,
+                 target_freq_hz, session_stamp):
         self.ser = ser
         self.out_dir = out_dir
         self.max_run_s = max_run_s
         self.show_all = show_all
-        self.baseline_kg = baseline_kg
-        self.load_kg = load_kg
-        self.base_label = "base" + kg_label(baseline_kg)
+        self.equipment_name = equipment_name
+        self.weight_kg = weight_kg
+        self.target_freq_hz = target_freq_hz
         self.columns = list(DEFAULT_COLUMNS)
         self.lock = threading.Lock()
         self.running = True
@@ -133,14 +173,17 @@ class Logger:
         self.last_reply_time = 0.0
 
         self.run_count = 0
-        self.run = None        # the run in progress: rows, file, start time
+        self.run = None        # the run in progress: rows, start time
         self.pending = None    # finished run waiting for its SERVO RPM
 
         prefix = f"{session_stamp}_"
         self.session_log = open(os.path.join(out_dir, f"{prefix}session_log.txt"), "a", encoding="utf-8")
-        self.session_log.write(f"{now_str()} baseline_kg={baseline_kg:g} load_kg={load_kg:g}\n")
+        self.session_log.write(
+            f"{now_str()} equipment={equipment_name} weight_kg={weight_kg:g} "
+            f"target_freq_hz={target_freq_hz:g}\n"
+        )
 
-        self.summary_path = os.path.join(out_dir, f"{prefix}summary_{self.base_label}.xlsx")
+        self.summary_path = os.path.join(out_dir, f"{prefix}summary.xlsx")
         self.summary_name = os.path.basename(self.summary_path)
         if os.path.exists(self.summary_path):
             # Re-opening an existing session (e.g. after a crash): append, don't overwrite.
@@ -158,6 +201,8 @@ class Logger:
         # keyed by SUMMARY_COLUMNS index (0-based) so Excel shows sensible decimals
         # instead of raw floats.
         self._col_formats = {
+            SUMMARY_COLUMNS.index("weight_kg"): "0.00",
+            SUMMARY_COLUMNS.index("target_freq_hz"): "0.00",
             SUMMARY_COLUMNS.index("run_s"): "0.0",
             SUMMARY_COLUMNS.index("avg_freq_hz"): "0.00",
             SUMMARY_COLUMNS.index("avg_current_a"): "0.000",
@@ -238,11 +283,8 @@ class Logger:
             print(f">> run {self.pending['n']}: no RPM entered - saved without it")
             self.write_summary(self.pending, None, "")
         self.run_count += 1
-        # A readable label for the summary row - no file is written for the run itself.
-        label = (f"{datetime.datetime.now():%Y-%m-%d_%H%M%S}_run{self.run_count:02d}"
-                 f"_load{kg_label(self.load_kg)}_{self.base_label}")
-        self.run = {"n": self.run_count, "name": label,
-                    "rows": [], "t0": time.monotonic(), "warned": False, "load": self.load_kg}
+        self.run = {"n": self.run_count, "start_time": now_str(), "weight": self.weight_kg,
+                    "rows": [], "t0": time.monotonic(), "warned": False}
 
     def end_run(self):
         run = self.run
@@ -285,10 +327,9 @@ class Logger:
         if rpm is not None and run.get("sync_rpm"):
             slip = (run["sync_rpm"] - rpm) / run["sync_rpm"]
         row_values = [
-            now_str(), run["n"], direction, run["load"], self.baseline_kg,
-            run["load"] + self.baseline_kg, run["seconds"], len(run["rows"]),
-            run["steady_rows"], run.get("avg_freq_hz"), run.get("avg_current_a"),
-            run.get("sync_rpm"), rpm, slip, run["name"],
+            run["n"], direction, run["weight"], self.target_freq_hz, run["start_time"],
+            run["seconds"], run["steady_rows"], run.get("avg_freq_hz"), run.get("avg_current_a"),
+            run.get("sync_rpm"), rpm, slip,
         ]
         self.ws.append(row_values)
         row_idx = self.ws.max_row
@@ -325,9 +366,9 @@ class Logger:
                 except ValueError:
                     kg = -1
                 if kg >= 0:
-                    self.load_kg = kg
-                    self.session_log.write(f"{now_str()} load_kg={kg:g}\n")
-                    print(f">> test weight is now {kg:g} kg for the next runs")
+                    self.weight_kg = kg
+                    self.session_log.write(f"{now_str()} weight_kg={kg:g}\n")
+                    print(f">> equipment weight is now {kg:g} kg for the next runs")
                 else:
                     print(">> usage: WEIGHT 2.5")
                 return
@@ -370,19 +411,20 @@ def main():
                     help="beep and warn when the motor has run this many seconds (default: 5.0)")
     ap.add_argument("--show-all", action="store_true",
                     help="show every data row, including idle ones (default: only while the motor runs)")
-    ap.add_argument("--baseline", type=float,
-                    help="baseline weight in kg (hook + scale); skips the startup question")
-    ap.add_argument("--weight", type=float,
-                    help="test weight in kg on the hook; skips the startup question")
+    ap.add_argument("--equipment", help="name of what's on the hook; skips the startup question")
+    ap.add_argument("--weight", type=float, help="its weight in kg; skips the startup question")
+    ap.add_argument("--freq", type=float, help="intended test frequency in Hz; skips the startup question")
     args = ap.parse_args()
 
     port = args.port or find_stlink_port()
-    baseline_kg = args.baseline if args.baseline is not None else ask_kg(
-        "Baseline weight - hook + scale only, no test weight")
-    load_kg = args.weight if args.weight is not None else ask_kg(
-        "Test weight on the hook for these runs (0 for the no-load baseline)")
-    stamp = f"{datetime.datetime.now():%Y-%m-%d_%H%M}"
-    out_dir = os.path.join(args.out, f"{stamp}_base{kg_label(baseline_kg)}")
+    equipment_name = args.equipment or ask_text("Equipment being tested (e.g. Metal housing)")
+    weight_kg = args.weight if args.weight is not None else ask_kg(f"Weight of {equipment_name}")
+    target_freq_hz = args.freq if args.freq is not None else ask_hz("Intended test frequency")
+
+    date_stamp = f"{datetime.datetime.now():%Y-%m-%d}"
+    session_stamp = (f"{date_stamp}_{safe_name(equipment_name)}_baseweight-{kg_label(weight_kg)}"
+                      f"_testedfreq-{hz_label(target_freq_hz)}")
+    out_dir = os.path.join(args.out, session_stamp)
     os.makedirs(out_dir, exist_ok=True)
 
     try:
@@ -391,11 +433,12 @@ def main():
         sys.exit(f"Couldn't open {port}: {e}\n"
                  f"Close anything else using it (PuTTY, Tera Term) and try again.")
 
-    log = Logger(ser, out_dir, args.max_run, args.show_all, baseline_kg, load_kg, stamp)
-    print(f">> connected to {port}, baseline {baseline_kg:g} kg, test weight {load_kg:g} kg")
+    log = Logger(ser, out_dir, args.max_run, args.show_all, equipment_name, weight_kg,
+                 target_freq_hz, session_stamp)
+    print(f">> connected to {port}: {equipment_name}, {weight_kg:g} kg, testing at {target_freq_hz:g} Hz")
     print(f">> saving to {out_dir}")
     print(">> every motor run is saved automatically - after each run, type the SERVO RPM")
-    print(">> commands: WEIGHT <kg> (change test weight)   VFDCHECK   QUIT")
+    print(">> commands: WEIGHT <kg> (change equipment weight)   VFDCHECK   QUIT")
     print(f">> run-time warning at {args.max_run:g} s (change with --max-run)\n")
 
     reader = threading.Thread(target=log.reader_loop, daemon=True)

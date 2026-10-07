@@ -1,8 +1,10 @@
 """Slip / current analysis for the load-estimation rig.
 
 Reads a results folder containing:
-  *_summary_*.xlsx  summary workbooks written by tools/logger/vfd_logger.py (one per
-                    session) - older sessions logged as *_summary_*.csv are read too
+  *_summary*.xlsx   summary workbooks written by tools/logger/vfd_logger.py (one per
+                    session) - older sessions logged as *_summary*.csv are read too.
+                    Reads both the current single-weight schema (weight_kg,
+                    target_freq_hz) and the older baseline_kg/load_kg schema.
   rpm_notes.csv     shaft RPM read off the ActiveServo display, per run:
                     session,run,direction,rpm_low,rpm_high,direction_source,note
 
@@ -50,14 +52,16 @@ def fnum(text):
 
 def session_of(path):
     # "2026-10-05_2139_summary_base0kg.xlsx" -> "2026-10-05_2139"
+    # "2026-10-07_Metalhousing_baseweight-1.46kg_testedfreq-6.36hz_summary.xlsx"
+    #   -> "2026-10-07_Metalhousing_baseweight-1.46kg_testedfreq-6.36hz"
     name = os.path.basename(path)
-    return name.split("_summary_")[0]
+    return name.rsplit("_summary", 1)[0]
 
 
 def load_summaries(folder):
     runs = {}
-    paths = (sorted(glob.glob(os.path.join(folder, "*_summary_*.xlsx")))
-             + sorted(glob.glob(os.path.join(folder, "*_summary_*.csv"))))
+    paths = (sorted(glob.glob(os.path.join(folder, "*_summary*.xlsx")))
+             + sorted(glob.glob(os.path.join(folder, "*_summary*.csv"))))
     for path in paths:
         session = session_of(path)
         name = os.path.basename(path)
@@ -71,7 +75,7 @@ def load_summaries(folder):
                 if values[0] is None:
                     continue  # trailing blank row
                 row = dict(zip(header, values))
-                row.setdefault("file", row.get("run_label", ""))
+                row.setdefault("file", row.get("run_label") or row.get("start_time") or "")
                 runs[(session, str(row["run"]))] = dict(row, session=session, summary_file=name)
         else:
             with open(path, newline="", encoding="utf-8") as f:
@@ -103,8 +107,13 @@ def build_runs(summaries, notes):
             continue
         rpm = (lo + hi) / 2
         half = max((hi - lo) / 2, MIN_RPM_HALF_RANGE)
-        load = fnum(s.get("load_kg")) or 0.0
-        base = fnum(s.get("baseline_kg")) or 0.0
+        if s.get("weight_kg") is not None:
+            # New single-weight schema: one equipment weight, no baseline/load split.
+            load = fnum(s.get("weight_kg")) or 0.0
+            base = 0.0
+        else:
+            load = fnum(s.get("load_kg")) or 0.0
+            base = fnum(s.get("baseline_kg")) or 0.0
         out.append({
             "session": n["session"], "run": n["run"], "direction": n["direction"],
             "direction_source": n.get("direction_source", ""),

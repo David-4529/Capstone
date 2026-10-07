@@ -14,31 +14,36 @@ Excel workbook - no CSV import step needed to edit or plot it.
 
 ## Running it
 
-Double-click **`run_logger.bat`**. The first run installs `pyserial` automatically.
-It finds the ST-LINK COM port by itself. If it can't, run it from a command prompt as
-`run_logger.bat --port COM5`, using the number shown in Device Manager → Ports.
+Double-click **`run_logger.bat`**. The first run installs `pyserial` and `openpyxl`
+automatically. It finds the ST-LINK COM port by itself. If it can't, run it from a
+command prompt as `run_logger.bat --port COM5`, using the number shown in Device
+Manager → Ports.
 
 Only one program can use the COM port at a time, so close PuTTY/Tera Term first. The
 STM32CubeIDE debugger and SWV console can stay open: they use a different connection.
 
 ## Running tests
 
-At startup the logger asks two questions:
+At startup the logger asks three questions:
 
-1. **Baseline weight**: hook + scale only, in kg. It goes into every file name.
-2. **Test weight** on the hook for these runs (0 for the no-load baseline).
+1. **Equipment being tested** - whatever's on the hook, e.g. `Metal housing`.
+2. **Its weight** in kg, e.g. `1.46`.
+3. **Intended test frequency** in Hz, e.g. `6.36` - the frequency you're about to
+   dial in on the drive's pot. This just names the session; the logger still
+   measures and records the real output frequency for every run.
 
-After that, **every motor run is saved automatically**. You don't need TEST or STOP.
+All three go into the session's file name. After that, **every motor run is saved
+automatically**. You don't need TEST or STOP.
 
 ```
                      hold UP; rows scroll while the motor runs; release
 >> run 1 saved (5.8 s): 10.00 Hz, 0.660 A over 18 steady rows
 >> type the SERVO RPM for run 1 (e.g. 291, or 291 down) ...
 291 up               the RPM you read on the display (+ direction, optional)
->> run 1: RPM 291 up, slip 0.0300 -> added to ..._summary_base0.35kg.xlsx
+>> run 1: RPM 291 up, slip 0.0300 -> added to ..._summary.xlsx
                      lower with DOWN: also saved as a run; type its RPM + "down",
                      or press Enter to skip it
-WEIGHT 2.5           change the test weight before the next runs
+WEIGHT 2.5           change the equipment weight before the next runs
 QUIT                 exit
 ```
 
@@ -58,18 +63,36 @@ how far the cable moved, then adjust: `run_logger.bat --max-run 4`.
 
 ## Output files
 
-To skip the startup questions, run `run_logger.bat --baseline 0.35 --weight 2.5`. The baseline goes into the
-file name and into the summary (`baseline_kg`, and `total_kg` = load + baseline).
+To skip the startup questions, run `run_logger.bat --equipment "Metal housing" --weight 1.46 --freq 6.36`.
 
-Each session creates a folder named after the date, time and baseline, with just two files in it:
+Each session creates a folder named from your three answers, with just two files in it:
 
 | File (example) | Contents |
 |---|---|
-| `data/2026-10-05_2106_base0.35kg/` | The session folder |
-| `2026-10-05_2106_summary_base0.35kg.xlsx` | One row per run: direction, load, baseline, total, steady averages, RPM, slip - a real Excel workbook, edit it directly |
-| `2026-10-05_2106_session_log.txt` | Everything sent and received, with PC timestamps (plain text, for troubleshooting) |
+| `data/2026-10-07_Metalhousing_baseweight-1.46kg_testedfreq-6.36hz/` | The session folder |
+| `..._summary.xlsx` | One row per run: direction, weight, target frequency, steady averages, RPM, slip - a real Excel workbook, edit it directly |
+| `..._session_log.txt` | Everything sent and received, with PC timestamps (plain text, for troubleshooting) |
 
 There's no per-run file and no all-rows file - every row the board sends is still used
 to compute each run's steady-state averages, it's just kept in memory rather than
 written to disk, so a session folder stays to these two files. The `.xlsx` is the one
 to plot (load vs. slip, load vs. current) and the one `tools/analysis/analyze.py` reads.
+
+Running the same equipment at the same weight and frequency again the same day reopens
+that session's workbook and appends to it, rather than starting a new file - handy for
+resuming after a crash, but worth knowing if you meant to start a fresh session instead.
+
+### Summary columns
+
+| Column | Meaning |
+|---|---|
+| `run` | Run number within this session |
+| `direction` | `up`, `down`, or blank if you skipped typing it |
+| `weight_kg` | Equipment weight (same for the whole session unless changed with `WEIGHT`) |
+| `target_freq_hz` | The frequency you told the logger you intended to test at |
+| `start_time` | When this run actually started (PC clock, to the millisecond) |
+| `run_s` | How long the run lasted |
+| `steady_rows` | How many rows went into the averages below - a run with only 1–2 is a stutter, not a clean hold |
+| `avg_freq_hz` / `avg_current_a` / `sync_rpm` | Measured, steady-state values for this run |
+| `actual_rpm` | The SERVO RPM you typed in |
+| `slip` | (sync_rpm − actual_rpm) / sync_rpm |
