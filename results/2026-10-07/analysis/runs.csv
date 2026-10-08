@@ -3,3 +3,24 @@ session,run,direction,direction_source,freq_hz,sync_rpm,current_a,steady_rows,lo
 2026-10-07_1903,11,down,recorded,1.5200,45.70,0.6100,103,1.4600,0.0000,1.4600,47.00,1.0000,-1.3000,-0.0284,0.0219,2026-10-07_190513_run11_load1.46kg_base0kg,1.46kg box; clean 27.1s continuous down run - longest of the four
 2026-10-07_1903,15,down,recorded,1.5300,45.80,0.4700,41,1.4600,0.0000,1.4600,47.00,1.0000,-1.2000,-0.0262,0.0218,2026-10-07_190549_run15_load1.46kg_base0kg,1.46kg box; clean 10.5s continuous down run
 2026-10-07_1903,16,down,recorded,1.5200,45.70,0.5730,87,1.4600,0.0000,1.4600,47.00,1.0000,-1.3000,-0.0284,0.0219,2026-10-07_190602_run16_load1.46kg_base0kg,1.46kg box; clean 22.2s continuous down run
+2026-10-07_MetalBox_baseweight-1.46kg_testedfreq-1.39hz,1,up,recorded,1.3900,41.70,,,1.4600,0.0000,1.4600,19.50,1.5000,22.20,0.5324,0.0360,,1.46kg box; single continuous ~39s run; no per-run current breakdown captured (n/c) - session-level RPM read only
+2026-10-07_MetalBox_baseweight-1.46kg_testedfreq-2.44hz,2,up,current,2.4600,73.80,0.6330,,1.4600,0.0000,1.4600,50.50,0.5000,23.30,0.3157,0.0068,,1.46kg box; 21.3s run; 0.633A
+2026-10-07_MetalBox_baseweight-1.46kg_testedfreq-2.44hz,7,up,current,2.4600,73.80,0.6300,,1.4600,0.0000,1.4600,50.50,0.5000,23.30,0.3157,0.0068,,1.46kg box; 21.9s run; 0.630A
+2026-10-07_MetalBox_baseweight-1.46kg_testedfreq-2.44hz,17,up,current,2.4600,73.70,0.5930,,1.4600,0.0000,1.4600,50.50,0.5000,23.20,0.3148,0.0068,,1.46kg box; 25.6s run; 0.593A
+2026-10-07_MetalBox_baseweight-1.46kg_testedfreq-2.44hz,4,down,current,2.4600,73.80,0.4760,,1.4600,0.0000,1.4600,73.00,1.0000,0.8000,0.0108,0.0136,,1.46kg box; 8.8s run; 0.476A
+2026-10-07_MetalBox_baseweight-1.46kg_testedfreq-2.44hz,10,down,current,2.4600,73.70,0.4620,,1.4600,0.0000,1.4600,73.00,1.0000,0.7000,0.0095,0.0136,,1.46kg box; 10.1s run; 0.462A
+2026-10-07_MetalBox_baseweight-1.46kg_testedfreq-2.44hz,19,down,current,2.4600,73.70,0.4630,,1.4600,0.0000,1.4600,73.00,1.0000,0.7000,0.0095,0.0136,,1.46kg box; 11.1s run; 0.463A
+2026-10-07_MetalBox_baseweight-1.46kg_testedfreq-4.85hz,2,up,current,4.8533,145.60,0.9410,,1.4600,0.0000,1.4600,130.50,0.5000,15.10,0.1037,0.0034,,1.46kg box; 10.1s run; 0.941A
+2026-10-07_MetalBox_baseweight-1.46kg_testedfreq-4.85hz,7,up,current,4.8533,145.60,0.9340,,1.4600,0.0000,1.4600,130.50,0.5000,15.10,0.1037,0.0034,,1.46kg box; 11.7s run; 0.934A
+2026-10-07_MetalBox_baseweight-1.46kg_testedfreq-4.85hz,10,up,current,4.8500,145.50,0.9530,,1.4600,0.0000,1.4600,130.50,0.5000,15.00,0.1031,0.0034,,1.46kg box; 8.9s run; 0.953A
+2026-10-07_MetalBox_baseweight-1.46kg_testedfreq-4.85hz,16,up,current,4.8533,145.60,0.9050,,1.4600,0.0000,1.4600,130.50,0.5000,15.10,0.1037,0.0034,,1.46kg box; 9.9s run; 0.905A
+2026-10-07_MetalBox_baseweight-1.46kg_testedfreq-4.85hz,4,down,current,4.8533,145.60,0.7010,,1.4600,0.0000,1.4600,145.50,0.5000,0.1000,0.0007,0.0034,,1.46kg box; 5.1s run; 0.701A
+2026-10-07_MetalBox_baseweight-1.46kg_testedfreq-4.85hz,9,down,current,4.8500,145.50,0.6790,,1.4600,0.0000,1.4600,145.50,0.5000,0.0000,0.0000,0.0034,,1.46kg box; 6.8s run; 0.679A
+2026-10-07_MetalBox_baseweight-1.46kg_testedfreq-4.85hz,13,down,current,4.8533,145.60,0.7000,,1.4600,0.0000,1.4600,145.50,0.5000,0.1000,0.0007,0.0034,,1.46kg box; 7.2s run; 0.700A
+2026-10-07_MetalBox_baseweight-1.46kg_testedfreq-6.36hz,1,up,current,6.3567,190.70,0.8640,,1.4600,0.0000,1.4600,173.50,0.5000,17.20,0.0902,0.0026,,1.46kg box; 6.2s run; 0.864A
+2026-10-07_MetalBox_baseweight-1.46kg_testedfreq-6.36hz,4,up,current,6.3567,190.70,0.8650,,1.4600,0.0000,1.4600,173.50,0.5000,17.20,0.0902,0.0026,,1.46kg box; 7.0s run; 0.865A
+2026-10-07_MetalBox_baseweight-1.46kg_testedfreq-6.36hz,11,up,current,6.3567,190.70,0.8250,,1.4600,0.0000,1.4600,173.50,0.5000,17.20,0.0902,0.0026,,1.46kg box; 7.2s run; 0.825A
+2026-10-07_MetalBox_baseweight-1.46kg_testedfreq-6.36hz,16,up,current,6.3533,190.60,0.7940,,1.4600,0.0000,1.4600,173.50,0.5000,17.10,0.0897,0.0026,,1.46kg box; 7.6s run; 0.794A
+2026-10-07_MetalBox_baseweight-1.46kg_testedfreq-6.36hz,3,down,current,6.3567,190.70,0.6420,,1.4600,0.0000,1.4600,189.50,0.5000,1.2000,0.0063,0.0026,,1.46kg box; 5.0s run; 0.642A
+2026-10-07_MetalBox_baseweight-1.46kg_testedfreq-6.36hz,6,down,current,6.3533,190.60,0.6390,,1.4600,0.0000,1.4600,189.50,0.5000,1.1000,0.0058,0.0026,,1.46kg box; 3.9s run; 0.639A
+2026-10-07_MetalBox_baseweight-1.46kg_testedfreq-6.36hz,13,down,current,6.3567,190.70,0.6430,,1.4600,0.0000,1.4600,189.50,0.5000,1.2000,0.0063,0.0026,,1.46kg box; 5.1s run; 0.643A

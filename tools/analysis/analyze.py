@@ -150,6 +150,8 @@ def group(runs):
     for (fbin, direction, total), rs in sorted(groups.items()):
         def stats(key):
             vals = [r[key] for r in rs if r[key] is not None]
+            if not vals:
+                return None, None
             mean = statistics.fmean(vals)
             std = statistics.stdev(vals) if len(vals) > 1 else 0.0
             return mean, std
@@ -200,7 +202,8 @@ def plot_vs(groups_rows, x_key, y_key, y_err_key, xlabel, ylabel, title, path, p
     fig.patch.set_facecolor(SURFACE)
     style_axes(ax)
     for direction, color, label in (("up", UP_COLOR, "Up (lifting)"), ("down", DOWN_COLOR, "Down (lowering)")):
-        pts = sorted((g[x_key], g[y_key], g[y_err_key]) for g in groups_rows if g["direction"] == direction)
+        pts = sorted((g[x_key], g[y_key], g[y_err_key]) for g in groups_rows
+                     if g["direction"] == direction and g[y_key] is not None and g[y_err_key] is not None)
         if not pts:
             continue
         xs, ys, es = zip(*pts)
@@ -214,7 +217,7 @@ def plot_vs(groups_rows, x_key, y_key, y_err_key, xlabel, ylabel, title, path, p
     ax.legend(frameon=False, fontsize=9, labelcolor=INK_2)
     # Only pin the bottom to 0 when every value is non-negative - otherwise (e.g. an
     # overhauling/negative-slip descent) that would clip real data off the chart.
-    all_y = [g[y_key] for g in groups_rows]
+    all_y = [g[y_key] for g in groups_rows if g[y_key] is not None]
     if all_y and min(all_y) >= 0:
         ax.set_ylim(bottom=0)
     fig.tight_layout()
@@ -288,10 +291,10 @@ def main():
     print(f">> {len(runs)} runs with RPM, {len(groups_rows)} groups -> {out_dir}")
     print(f"{'Hz':>6} {'dir':>5} {'kg':>5} {'n':>3} {'slip':>14} {'slip RPM':>14} {'current A':>14}")
     for g in groups_rows:
+        cur = f"{g['current_mean']:6.3f}±{g['current_std']:.3f}" if g["current_mean"] is not None else "   n/c"
         print(f"{g['freq_hz']:6.2f} {g['direction']:>5} {g['total_kg']:5g} {g['n']:3d} "
               f"{g['slip_mean']:7.4f}±{max(g['slip_std'], g['slip_reading_unc']):.4f} "
-              f"{g['slip_rpm_mean']:8.2f}±{g['slip_rpm_std']:.2f}   "
-              f"{g['current_mean']:6.3f}±{g['current_std']:.3f}")
+              f"{g['slip_rpm_mean']:8.2f}±{g['slip_rpm_std']:.2f}   {cur}")
     make_plots(groups_rows, out_dir)
 
 
