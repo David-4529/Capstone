@@ -202,3 +202,95 @@ decrease-with-load pattern first seen at 4.85 Hz to a second frequency: no-load 
 
 This completes the pliers (0.58 kg) data set across all four test frequencies (1.39,
 2.44, 4.85, 6.36 Hz), matching the four points already collected for the 1.46 kg box.
+
+## 2026-10-07: plastic housing (0.32 kg) — third and final calibration object
+
+Lightest object tested. The first up run had the hook catching before settling into
+clean technique; several of the resulting short/high-current stutters are excluded
+below the same way as every other session's stutters.
+
+### 1.39 Hz
+
+Up read as **28 RPM**; down read as **39–42 RPM**. All four runs were long and clean
+(31.5–32.3 s for the longer two), but for the first time current gave no separation at
+all between directions — all four fluctuate in the same 0.40–0.69 A band with averages
+within 0.03 A of each other (0.497–0.529 A), the same breakdown seen with the pliers at
+this frequency, just more complete. With no signal to split on, direction was confirmed
+directly by the user, who ran a clean alternating up/down/up/down sequence:
+
+| Run | Dir | Run time (s) | Current (A) | Sync RPM | Slip |
+|---|---|---|---|---|---|
+| 1 | up | 31.5 | 0.529 | 41.6 | 0.327 |
+| 3 | up | 32.3 | 0.502 | 41.6 | 0.327 |
+| 2 | down | 15.5 | 0.511 | 41.6 | −0.0096 to 0.0625 |
+| 4 | down | 18.8 | 0.497 | 41.6 | −0.0096 to 0.0625 |
+
+**Consistency check**: up slip (32.7%) sits just below the pliers (33.5%–38.6%) and
+above the no-load baseline (27%) — correct ordering by load. Down slip (≈2.65%
+midpoint) continues the monotonic decrease: no-load 9% → plastic housing ≈2.65% →
+pliers ≈−1% → box ≈−3.3%.
+
+### 2.44 Hz
+
+Up read as **55–58 RPM**; down read as **70–72 RPM**. This session had a composite-run
+problem of its own: run 12 (37.6 s) fluctuates 0.43–0.57 A for ~24 s (matching run 1's
+pattern), dips near-stop without crossing the 0.5 Hz threshold, then switches to a tight
+flat ~0.43–0.45 A plateau for another ~12 s (matching run 5's pattern) before truly
+stopping — excluded. Run 13 genuinely stops at a real zero-frequency row partway through
+what might look like one long run, then the motor runs again for ~12 s on a flat
+~0.43–0.44 A plateau before a second real stop; that final ~12 s segment was never
+captured as its own summary row and is not included here.
+
+| Run | Dir | Run time (s) | Current (A) | Sync RPM | Slip |
+|---|---|---|---|---|---|
+| 1 | up | 20.3 | 0.514 | 73.1 | 0.207–0.248 |
+| 13 | up | 17.0 | 0.512 | 73.1 | 0.207–0.248 |
+| 5 | down | 13.6 | 0.454 | 73.1 | 0.015–0.042 |
+
+**Consistency check**: up slip (20.7%–24.8%) sits between the no-load baseline (18%)
+and the pliers (23.1%–31.4%). Down slip continues the monotonic trend: no-load 5% →
+plastic housing ≈2.9% → pliers ≈1.9% → box ≈1%.
+
+### 4.85 Hz
+
+Up read as **135–136 RPM**; down read as **143 RPM**. Five long runs, splitting cleanly
+into two tight current clusters (0.738–0.773 A vs. 0.821–0.854 A — note the up cluster
+is higher here, opposite-looking numbers from a glance but consistent since these are
+absolute, not relative, values):
+
+| Run | Dir | Run time (s) | Current (A) | Sync RPM | Slip |
+|---|---|---|---|---|---|
+| 2 | up | 8.5 | 0.854 | 145.4 | 0.0646–0.0715 |
+| 12 | up | 10.3 | 0.834 | 145.4 | 0.0646–0.0715 |
+| 23 | up | 14.3 | 0.821 | 145.4 | 0.0646–0.0715 |
+| 6 | down | 5.6 | 0.742 | 145.4 | 0.0165 |
+| 13 | down | 5.6 | 0.773 | 145.4 | 0.0165 |
+
+**Consistency check**: down slip (1.65%) fits neatly into the monotonic decrease:
+no-load 3.0% → plastic housing 1.65% → pliers 1.1%–1.2% → box ≈0%. Up slip (6.46%–7.15%)
+is essentially tied with the pliers (6.6%) rather than clearly below it — not a concern,
+since 0.32 kg and 0.58 kg are the two lightest, closest-together loads tested, and the
+ranges overlap within normal RPM-reading jitter.
+
+### 6.36 Hz
+
+Up read as **178 RPM**; down read as **187 RPM**. Six long runs split cleanly into two
+clusters:
+
+| Run | Dir | Run time (s) | Current (A) | Sync RPM | Slip |
+|---|---|---|---|---|---|
+| 10 | up | 6.2 | 0.743 | 191.0 | 0.0681–0.0686 |
+| 14 | up | 6.0 | 0.750 | 191.0 | 0.0681–0.0686 |
+| 16 | up | 6.8 | 0.739 | 191.1 | 0.0681–0.0686 |
+| 8 | down | 8.2 | 0.632 | 191.1 | 0.0215 |
+| 13 | down | 5.6 | 0.647 | 191.1 | 0.0215 |
+| 15 | down | 5.4 | 0.659 | 191.1 | 0.0215 |
+
+**Consistency check**: down slip (2.15%) continues the monotonic trend: no-load 2.5% →
+plastic housing 2.15% → pliers ≈1.75% → box ≈0.6%. Up slip (6.81%–6.86%) is again
+essentially tied with the pliers (6.7%), same reasoning as at 4.85 Hz.
+
+This completes all three calibration objects (0.32 kg plastic housing, 0.58 kg pliers,
+1.46 kg metal box) plus the no-load baseline across all four test frequencies — twelve
+loaded data points per frequency direction, enough to fit a slip-vs-load calibration
+curve at each of the four frequencies using up-direction data.
