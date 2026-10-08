@@ -148,3 +148,27 @@ the 6.36 Hz loaded-box result, not negative this time but still far below up sli
 slip (23.1%–31.4%) again falls between the no-load baseline at 2.44 Hz (18%) and the
 1.46 kg box at 2.44 Hz (30.8%–32.2%) — exactly where 0.58 kg belongs, confirming the
 current-pattern-based direction split.
+
+## 2026-10-07: pliers (0.58 kg), 4.85 Hz
+
+Up read as **136 RPM**; down read as **144 RPM** (session
+`2026-10-07_Pliers_baseweight-0.58kg_testedfreq-4.85hz`). Seven runs held long enough to
+trust, and this time current splits them cleanly into two tight clusters with a 0.1 A
+gap between them — no ambiguity:
+
+| Run | Dir | Run time (s) | Current (A) | Sync RPM | RPM read | Slip |
+|---|---|---|---|---|---|---|
+| 1 | up | 8.3 | 0.886 | 145.7 | 136 | 0.0659–0.0666 |
+| 3 | up | 9.7 | 0.853 | 145.7 | 136 | 0.0659–0.0666 |
+| 12 | up | 9.3 | 0.872 | 145.6 | 136 | 0.0659–0.0666 |
+| 16 | up | 8.2 | 0.882 | 145.6 | 136 | 0.0659–0.0666 |
+| 2 | down | 8.1 | 0.745 | 145.7 | 144 | 0.0110–0.0117 |
+| 4 | down | 5.6 | 0.738 | 145.6 | 144 | 0.0110–0.0117 |
+| 14 | down | 6.2 | 0.748 | 145.7 | 144 | 0.0110–0.0117 |
+
+**Consistency check**: up slip (6.6%) sits between the no-load baseline at 4.85 Hz
+(5.4%) and the 1.46 kg box at 4.85 Hz (10.0%–10.7%), exactly where 0.58 kg belongs. Down
+slip also lines up across all three load levels at this frequency, decreasing
+monotonically as load increases — no-load 3.0% → 0.58 kg pliers 1.1%–1.2% → 1.46 kg box
+≈0% — consistent with heavier loads overhauling the motor more completely on the way
+down.
