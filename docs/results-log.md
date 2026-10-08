@@ -172,3 +172,33 @@ slip also lines up across all three load levels at this frequency, decreasing
 monotonically as load increases — no-load 3.0% → 0.58 kg pliers 1.1%–1.2% → 1.46 kg box
 ≈0% — consistent with heavier loads overhauling the motor more completely on the way
 down.
+
+## 2026-10-07: pliers (0.58 kg), 6.36 Hz — last of the four pliers frequencies
+
+Up read as **178 RPM**; down read as **187–188 RPM** (session
+`2026-10-07_Pliers_baseweight-0.58kg_testedfreq-6.36hz`). One run needed to be thrown out
+for a reason not seen before: run 7 (11.1 s, 33 steady rows — looks clean by the numbers
+alone) is actually two different runs stitched into one. Tracing the raw log, its current
+holds a tight ~0.74 A plateau, then goes through several seconds of the pot dipping to
+0.51–0.58 Hz without the frequency ever crossing the 0.5 Hz "stopped" threshold, then
+settles onto a *second*, different ~0.65 A plateau for the rest of the run. Because our
+continuity rule only checks whether frequency ever hits zero, this got treated as one
+run with a blended, meaningless average (0.724 A) — excluded rather than guessed at.
+
+The remaining five long runs still split cleanly on current, with a 0.072 A gap:
+
+| Run | Dir | Run time (s) | Current (A) | Sync RPM | RPM read | Slip |
+|---|---|---|---|---|---|---|
+| 2 | up | 7.9 | 0.753 | 190.9 | 178 | 0.0671–0.0676 |
+| 9 | up | 7.0 | 0.763 | 190.8 | 178 | 0.0671–0.0676 |
+| 11 | up | 4.3 | 0.765 | 190.8 | 178 | 0.0671–0.0676 |
+| 5 | down | 4.6 | 0.639 | 190.9 | 187–188 | 0.0152–0.0204 |
+| 10 | down | 8.4 | 0.681 | 190.9 | 187–188 | 0.0152–0.0204 |
+
+**Consistency check**: up slip (6.7%) again falls between the no-load baseline (5.5%–
+5.6%) and the 1.46 kg box (8.7%–9.3%) at 6.36 Hz. Down slip extends the monotonic-
+decrease-with-load pattern first seen at 4.85 Hz to a second frequency: no-load 2.5% →
+0.58 kg pliers 1.5%–2.0% → 1.46 kg box 0.4%–0.8%.
+
+This completes the pliers (0.58 kg) data set across all four test frequencies (1.39,
+2.44, 4.85, 6.36 Hz), matching the four points already collected for the 1.46 kg box.

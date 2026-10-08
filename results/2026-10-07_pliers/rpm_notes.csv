@@ -15,3 +15,9 @@ session,run,direction,rpm_low,rpm_high,direction_source,note
 2026-10-07_Pliers_baseweight-0.58kg_testedfreq-4.85hz,2,down,144,144,current,0.58kg pliers; 8.1s run; steady ~0.71-0.75A plateau - clear ~0.1A gap below the up group
 2026-10-07_Pliers_baseweight-0.58kg_testedfreq-4.85hz,4,down,144,144,current,0.58kg pliers; 5.6s run; steady ~0.69-0.72A plateau
 2026-10-07_Pliers_baseweight-0.58kg_testedfreq-4.85hz,14,down,144,144,current,0.58kg pliers; 6.2s run; steady ~0.70-0.76A plateau
+2026-10-07_Pliers_baseweight-0.58kg_testedfreq-6.36hz,2,up,178,178,current,0.58kg pliers; 7.9s run; tight 0.74-0.76A plateau
+2026-10-07_Pliers_baseweight-0.58kg_testedfreq-6.36hz,9,up,178,178,current,0.58kg pliers; 7.0s run; 0.74-0.77A plateau after initial transient
+2026-10-07_Pliers_baseweight-0.58kg_testedfreq-6.36hz,11,up,178,178,current,0.58kg pliers; 4.3s run; 0.74-0.79A plateau
+2026-10-07_Pliers_baseweight-0.58kg_testedfreq-6.36hz,5,down,187,188,current,0.58kg pliers; 4.6s run; tight 0.62A plateau
+2026-10-07_Pliers_baseweight-0.58kg_testedfreq-6.36hz,10,down,187,188,current,0.58kg pliers; 8.4s run; 0.64-0.66A plateau after initial transient spike
+
