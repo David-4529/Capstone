@@ -16,6 +16,10 @@ Modbus RTU logic is written directly into it, not a separate module.
    - **Connectivity → USART2**: confirm it's enabled (Mode ≠ Disable) — this drives
      the ST-LINK virtual COM port used for the serial terminal. If it's not enabled,
      set PA2 → `USART2_TX`, PA3 → `USART2_RX` first.
+   - **Connectivity → I2C1**: set Mode to `I2C` and leave the default pins (**PB8**
+     = SCL, **PB9** = SDA — both otherwise unused on this board). Drives the HMI
+     display (see "HMI: live load display" below); leave I2C1 disabled if you don't
+     want to build the display yet, the rest of the firmware doesn't depend on it.
    - **System Core → NVIC**: check **USART2 global interrupt** (needed to receive
      typed commands without blocking the main loop).
 3. **Project → Generate Code.**
@@ -82,6 +86,45 @@ kg. That starts a numbered test, and every row logged until `STOP` carries that 
 `test_id` in the last CSV column (0 = no test running). `STOP` prints the test's
 steady-state averages, counting only rows logged after `RPM` was entered. Typed
 commands need the **USART2 global interrupt** enabled in the `.ioc` (NVIC Settings).
+
+## HMI: live load display
+
+A 16x2 character LCD on a PCF8574 I2C backpack shows the predicted load live,
+with no laptop needed once it's flashed and wired:
+
+```
+F 4.85Hz I0.90A
+Load~ 1.02 kg
+```
+
+**Wiring** (4 wires, no other parts): backpack `GND`→Nucleo `GND`, `VCC`→Nucleo
+`5V` (CN7, most PCF8574 backpacks are 5V parts — don't use 3V3), `SDA`→**PB9**,
+`SCL`→**PB8**. Most backpacks already carry their own pull-up resistors, so
+nothing else is needed for one device on the bus. If the backlight lights but no
+characters appear, it's a wiring/init issue, not an address issue; if nothing
+lights at all, double check the I2C address — most are `0x27`, some clones are
+`0x3F` (`LCD_I2C_ADDR` near the top of `main.c`'s `USER CODE BEGIN PD` section).
+
+**What it shows**: output frequency and current (both already read for the CSV
+log) on line 1, and a predicted weight on line 2, computed from a small
+per-frequency linear model (`LOAD_MODEL` in `main.c`, fit from the fully-logged
+calibration runs under `results/` — see `tools/model/fit_model.py` and its
+README). "stopped" is shown instead whenever output frequency is near zero.
+
+**Important limitation — up (lifting) direction only.** This drive is open-loop
+V/Hz with no dynamic braking, so while lowering, a descending load overhauls the
+motor and current no longer tracks weight at all (see `docs/results-log.md`).
+There is currently no automatic way for the firmware to tell lifting from
+lowering (the FWD/REV pushbuttons wire straight to the VFD's control terminals,
+not through the MCU), so treat the displayed number as valid only while
+actively lifting, and ignore it while lowering or stopped. Sensing direction
+automatically (e.g. tapping the FWD/REV button lines into two spare GPIO inputs)
+is a natural next step — see `docs/open-items.md`.
+
+**Recalibrating**: after logging a new calibration run into `results/`, run
+`python tools/model/fit_model.py` from the repo root, then copy the printed
+`LOAD_MODEL` table (or `tools/model/load_model.h`'s) into `main.c` in place of
+the existing one, and reflash.
 
 ## Status LED (no serial needed)
 

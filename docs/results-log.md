@@ -294,3 +294,48 @@ This completes all three calibration objects (0.32 kg plastic housing, 0.58 kg p
 1.46 kg metal box) plus the no-load baseline across all four test frequencies — twelve
 loaded data points per frequency direction, enough to fit a slip-vs-load calibration
 curve at each of the four frequencies using up-direction data.
+
+Also backfilled this session: the metal box's 2.44/4.85/6.36 Hz runs (first analyzed
+and published above and in its Word doc, but never logged as structured data) are now
+in `results/2026-10-07/` alongside the box's original 1.52 Hz down session, so all
+three objects read uniformly from `results/*/analysis/groups.csv`.
+
+## 2026-10-08: load-prediction model, fit from all four calibration points
+
+With all three objects (plus no-load) logged at all four frequencies, built
+`tools/model/fit_model.py` to fit an actual load-prediction model instead of just
+characterizing slip. It reads every `results/*/analysis/groups.csv`, keeps only
+up-direction (lifting) rows, and fits `load_kg = slope * current_a + intercept` by
+least squares, one line per test frequency.
+
+**Current, not slip, is the input** — a deliberate deviation from the finding above
+that slip is the more load-sensitive signal. Shaft RPM (needed for slip) is read by
+eye off the ActiveServo display and typed in by hand; there's no shaft encoder, so
+it's only available during a manually-babysat calibration run, not once the rig is
+meant to run standalone. Output current is already read automatically over Modbus
+every cycle. Checking the up-direction current means across all four objects first:
+
+| Freq (Hz) | No-load | 0.32 kg | 0.58 kg | 1.46 kg |
+|---|---|---|---|---|
+| 1.39 | 0.476 A | 0.516 A | 0.542 A | n/c |
+| 2.44 | 0.466 A | 0.513 A | 0.534 A | 0.619 A |
+| 4.85 | 0.814 A | 0.836 A | 0.873 A | 0.933 A |
+| 6.36 | 0.704 A | 0.744 A | 0.760 A | 0.837 A |
+
+Current rises monotonically with load at every frequency (the 1.39 Hz box point is
+the single continuous run with no per-run current breakdown - excluded from that
+fit, which still has 3 points). The resulting fits are tight: r² = 0.998, 0.991,
+0.983, 0.992 at 1.39/2.44/4.85/6.36 Hz respectively - not as sensitive as slip, but
+good enough for a live estimate with a signal that needs no manual input.
+
+**This model is up-direction only.** Down-direction current doesn't track load at
+any frequency (see the overhauling finding above - gravity sets the pace, not the
+motor), so there is no equivalent down-direction fit, and the model should not be
+trusted while lowering.
+
+Coefficients are in `tools/model/load_model.json` / `load_model.h`, and the same
+table is pasted into `firmware/stm32/Core/Src/main.c` to drive the new HMI display
+(see `firmware/stm32/README.md`, "HMI: live load display") - a 16x2 I2C character
+LCD showing live frequency/current and the predicted weight, wired on I2C1
+(PB8/PB9, both previously unused). Re-run `tools/model/fit_model.py` and re-paste
+the table after logging any new calibration object.

@@ -1,0 +1,49 @@
+{
+  "description": "Up-direction (lifting) load_kg = slope_kg_per_a * current_a + intercept_kg, one fit per test frequency. Not valid in the down (lowering) direction - see fit_model.py docstring.",
+  "frequencies": [
+    {
+      "freq_hz": 1.39,
+      "slope_kg_per_a": 8.6762,
+      "intercept_kg": -4.1364,
+      "r2": 0.9977,
+      "n_points": 3,
+      "current_range_a": [
+        0.476,
+        0.542
+      ]
+    },
+    {
+      "freq_hz": 2.44,
+      "slope_kg_per_a": 9.7665,
+      "intercept_kg": -4.6141,
+      "r2": 0.9906,
+      "n_points": 4,
+      "current_range_a": [
+        0.466,
+        0.619
+      ]
+    },
+    {
+      "freq_hz": 4.85,
+      "slope_kg_per_a": 11.9175,
+      "intercept_kg": -9.7091,
+      "r2": 0.9831,
+      "n_points": 4,
+      "current_range_a": [
+        0.814,
+        0.933
+      ]
+    },
+    {
+      "freq_hz": 6.36,
+      "slope_kg_per_a": 11.2032,
+      "intercept_kg": -7.9392,
+      "r2": 0.9924,
+      "n_points": 4,
+      "current_range_a": [
+        0.704,
+        0.837
+      ]
+    }
+  ]
+}

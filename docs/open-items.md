@@ -92,10 +92,20 @@ belt/pulley ratio between motor and drum (GT2 20T on the motor per item 1), and 
 measured travel on the first no-load run. Firmware logs at 250 ms and the PC logger
 warns at `--max-run` seconds to fit short runs.
 
-## 10. Future enhancements (not started)
-Ideas for after real calibration/validation data is collected:
-- **Local HMI/keypad** on the rig itself (standalone display + button input), so the
-  station doesn't need a laptop tethered via serial to run a test or see live values.
+## 10. Future enhancements
+- **Local HMI display** — done. A 16x2 I2C character LCD (PCF8574 backpack, PB8/
+  PB9 on the STM32, 4 wires) now shows live output frequency/current and a
+  predicted load, computed from a per-frequency linear model fit to the real
+  calibration data (`tools/model/fit_model.py`). See `firmware/stm32/README.md`
+  ("HMI: live load display") for wiring and limitations. **Still open:**
+  - **Keypad / data entry** — not started. No button input exists yet; weight
+    entry for a new test still has to go through the serial `TEST` command.
+  - **Direction sensing** — the displayed weight assumes the rig is lifting.
+    This drive's open-loop V/Hz control means current doesn't track load at all
+    while lowering (no dynamic braking - see `docs/results-log.md`), and the
+    firmware currently has no way to tell FWD from REV automatically (those
+    buttons wire straight to the VFD terminals, not through the MCU). Tapping
+    those two button lines into spare GPIO inputs would fix this cheaply.
 - **Simple web dashboard** showing live/logged load readings and the model's estimated
   weight (slip-based and current-based side by side), likely reading off the same CSV
   stream the STM32 already produces. Would need a way to get that serial stream onto

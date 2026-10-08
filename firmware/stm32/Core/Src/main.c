@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <math.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -75,6 +76,43 @@
 #define STATUS_LED_PIN GPIO_PIN_5
 #define LED_BLINK_OK_MS 1000
 #define LED_BLINK_FAIL_MS 100
+
+// 16x2 HD44780 character LCD via a PCF8574 I2C backpack (I2C1, PB8=SCL/PB9=SDA -
+// both free; see firmware/stm32/README.md for the CubeMX step to enable I2C1).
+// Most backpacks are at 0x27; some clones are 0x3F - change this if the display
+// stays blank (a backlight that lights but shows no characters is still a wiring
+// problem, not an address problem).
+#define LCD_I2C_ADDR (0x27 << 1)
+#define LCD_COLS 16
+// Redraw at most this often - the predicted weight doesn't need to update faster
+// than a human can read it, and it keeps I2C traffic off the RS-485 polling loop.
+#define LCD_UPDATE_INTERVAL_MS 500
+
+// Live weight estimate: load_kg = slope_kg_per_a * current_a + intercept_kg, using
+// whichever row's freq_hz is closest to the drive's current output frequency.
+// UP (LIFTING) DIRECTION ONLY - see tools/model/fit_model.py and
+// docs/results-log.md for why down-direction current doesn't track load on this
+// open-loop V/Hz drive. There is no automatic way yet to tell whether the rig is
+// lifting or lowering (FWD/REV wires straight to the VFD, not through the MCU), so
+// this number should be read assuming an active lift and ignored while lowering.
+//
+// Regenerate this table after adding calibration data:
+//   python tools/model/fit_model.py
+// and paste the printed LOAD_MODEL array back in here (tools/model/load_model.h
+// has the same table, kept as a single self-contained main.c on purpose - see
+// firmware/stm32/README.md).
+typedef struct {
+  float freq_hz;
+  float slope_kg_per_a;
+  float intercept_kg;
+} LoadModelEntry;
+#define LOAD_MODEL_N 4
+static const LoadModelEntry LOAD_MODEL[LOAD_MODEL_N] = {
+  { 1.39f, 8.6762f, -4.1364f }, // r2=0.998, n=3, current 0.476-0.542 A
+  { 2.44f, 9.7665f, -4.6141f }, // r2=0.991, n=4, current 0.466-0.619 A
+  { 4.85f, 11.9175f, -9.7091f }, // r2=0.983, n=4, current 0.814-0.933 A
+  { 6.36f, 11.2032f, -7.9392f }, // r2=0.992, n=4, current 0.704-0.837 A
+};
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -85,6 +123,7 @@
 /* Private variables ---------------------------------------------------------*/
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
+I2C_HandleTypeDef hi2c1;
 
 /* USER CODE BEGIN PV */
 static uint32_t lastLogMs = 0;
@@ -106,10 +145,13 @@ static volatile bool lineReady = false;
 // Latest readings, for watching in the debugger's Live Expressions view.
 volatile float liveFreqHz = 0.0f;
 volatile float liveCurrentA = 0.0f;
+volatile bool liveCurrentValid = false;
 volatile float livePotSetpointHz = 0.0f;
 volatile uint32_t liveModbusOkCount = 0;
 volatile uint32_t liveModbusFailCount = 0;
 static volatile bool lastModbusOk = false;
+static uint32_t lastLcdUpdateMs = 0;
+static bool lcdReady = false;
 
 // Test sessions: TEST asks for the weight and starts a numbered test, STOP ends it and
 // prints a summary. Rows logged during a test carry its test_id (0 = no test running).
@@ -133,6 +175,7 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_USART2_UART_Init(void);
+static void MX_I2C1_Init(void);
 /* USER CODE BEGIN PFP */
 static uint16_t ModbusCrc16(const uint8_t *buf, uint16_t len);
 static bool ModbusReadHoldingRegister(uint16_t regAddr, uint16_t *value);
@@ -142,6 +185,8 @@ static void LogDataPoint(void);
 static void CheckVfdPotControl(void);
 static void StartTest(float loadKg);
 static void EndTest(void);
+static void Lcd_Init(void);
+static void UpdateLoadDisplay(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -180,6 +225,7 @@ int main(void)
   MX_GPIO_Init();
   MX_USART1_UART_Init();
   MX_USART2_UART_Init();
+  MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
   HAL_GPIO_WritePin(RS485_DE_RE_GPIO_Port, RS485_DE_RE_Pin, GPIO_PIN_RESET); // start in receive mode
 
@@ -200,6 +246,9 @@ int main(void)
 
   CheckVfdPotControl();
   UartPrint("# type TEST to start a test (it asks for the weight), STOP to end it\r\n");
+
+  Lcd_Init();
+  lcdReady = true;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -215,6 +264,12 @@ int main(void)
     if (now - lastLogMs >= LOG_INTERVAL_MS) {
       lastLogMs = now;
       LogDataPoint();
+    }
+
+    now = HAL_GetTick();
+    if (lcdReady && now - lastLcdUpdateMs >= LCD_UPDATE_INTERVAL_MS) {
+      lastLcdUpdateMs = now;
+      UpdateLoadDisplay();
     }
 
     now = HAL_GetTick();
@@ -333,6 +388,40 @@ static void MX_USART2_UART_Init(void)
   /* USER CODE BEGIN USART2_Init 2 */
 
   /* USER CODE END USART2_Init 2 */
+
+}
+
+/**
+  * @brief I2C1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_I2C1_Init(void)
+{
+
+  /* USER CODE BEGIN I2C1_Init 0 */
+
+  /* USER CODE END I2C1_Init 0 */
+
+  /* USER CODE BEGIN I2C1_Init 1 */
+
+  /* USER CODE END I2C1_Init 1 */
+  hi2c1.Instance = I2C1;
+  hi2c1.Init.ClockSpeed = 100000;
+  hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
+  hi2c1.Init.OwnAddress1 = 0;
+  hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+  hi2c1.Init.OwnAddress2 = 0;
+  hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  if (HAL_I2C_Init(&hi2c1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN I2C1_Init 2 */
+
+  /* USER CODE END I2C1_Init 2 */
 
 }
 
@@ -680,6 +769,7 @@ static void LogDataPoint(void) {
     currentSource = "NA";
     haveCurrent = false;
   }
+  liveCurrentValid = haveCurrent;
   if (haveCurrent) {
     liveCurrentA = currentA;
   }
@@ -823,6 +913,118 @@ static void CheckVfdPotControl(void) {
   UartPrint(msg);
   UartPrint(ok ? "# VFDCHECK: PASS - turn the pot to set speed, FWD/REV to run\r\n"
                : "# VFDCHECK: FAIL - fix the settings above (see docs/vfd-parameters.md)\r\n");
+}
+
+// ---- 16x2 HD44780 LCD over a PCF8574 I2C backpack (4-bit mode) -----------------
+// Standard backpack pin mapping: P0=RS, P1=RW (tied low, we never read), P2=E,
+// P3=backlight, P4-P7=D4-D7. Every transfer uses a short timeout so a disconnected
+// or unwired display just no-ops instead of blocking the RS-485 polling loop.
+#define LCD_BACKLIGHT 0x08
+#define LCD_ENABLE 0x04
+#define LCD_RS 0x01
+#define LCD_I2C_TIMEOUT_MS 20
+
+static void Lcd_I2cWrite(uint8_t data) {
+  HAL_I2C_Master_Transmit(&hi2c1, LCD_I2C_ADDR, &data, 1, LCD_I2C_TIMEOUT_MS);
+}
+
+static void Lcd_PulseEnable(uint8_t data) {
+  Lcd_I2cWrite(data | LCD_ENABLE);
+  Lcd_I2cWrite(data & (uint8_t)~LCD_ENABLE);
+}
+
+static void Lcd_WriteNibble(uint8_t nibbleHigh, bool rs) {
+  uint8_t data = (nibbleHigh & 0xF0) | LCD_BACKLIGHT | (rs ? LCD_RS : 0);
+  Lcd_I2cWrite(data);
+  Lcd_PulseEnable(data);
+}
+
+static void Lcd_WriteByte(uint8_t value, bool rs) {
+  Lcd_WriteNibble(value & 0xF0, rs);
+  Lcd_WriteNibble((uint8_t)(value << 4) & 0xF0, rs);
+}
+
+static void Lcd_Command(uint8_t cmd) { Lcd_WriteByte(cmd, false); }
+static void Lcd_Data(uint8_t data) { Lcd_WriteByte(data, true); }
+
+static void Lcd_Init(void) {
+  HAL_Delay(50); // HD44780 power-on settle time
+  // Force 8-bit mode three times per the HD44780 datasheet init sequence, then
+  // drop to 4-bit - this works regardless of whatever state the display woke up in.
+  Lcd_WriteNibble(0x30, false);
+  HAL_Delay(5);
+  Lcd_WriteNibble(0x30, false);
+  HAL_Delay(1);
+  Lcd_WriteNibble(0x30, false);
+  HAL_Delay(1);
+  Lcd_WriteNibble(0x20, false); // now 4-bit mode
+  HAL_Delay(1);
+  Lcd_Command(0x28); // 4-bit, 2 line, 5x8 font
+  Lcd_Command(0x0C); // display on, cursor off, blink off
+  Lcd_Command(0x06); // entry mode: increment, no shift
+  Lcd_Command(0x01); // clear display
+  HAL_Delay(2);
+}
+
+static void Lcd_SetCursor(uint8_t col, uint8_t row) {
+  static const uint8_t rowOffset[2] = { 0x00, 0x40 };
+  Lcd_Command((uint8_t)(0x80 | (col + rowOffset[row])));
+}
+
+// Writes exactly `width` characters, space-padded, so stale digits from a longer
+// previous value never linger on screen.
+static void Lcd_PrintPadded(const char *s, uint8_t width) {
+  uint8_t i = 0;
+  for (; s[i] != '\0' && i < width; i++) {
+    Lcd_Data((uint8_t)s[i]);
+  }
+  for (; i < width; i++) {
+    Lcd_Data(' ');
+  }
+}
+
+// Predicts load_kg from current using whichever LOAD_MODEL row's freq_hz is
+// closest to freqHz. UP (LIFTING) DIRECTION ONLY - see the LOAD_MODEL comment
+// above and tools/model/fit_model.py.
+static float PredictLoadKg(float freqHz, float currentA) {
+  const LoadModelEntry *best = &LOAD_MODEL[0];
+  float bestDist = fabsf(LOAD_MODEL[0].freq_hz - freqHz);
+  for (uint8_t i = 1; i < LOAD_MODEL_N; i++) {
+    float dist = fabsf(LOAD_MODEL[i].freq_hz - freqHz);
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = &LOAD_MODEL[i];
+    }
+  }
+  float load = best->slope_kg_per_a * currentA + best->intercept_kg;
+  return load > 0.0f ? load : 0.0f;
+}
+
+static void UpdateLoadDisplay(void) {
+  char line[LCD_COLS + 1];
+  float freqHz = liveFreqHz;
+  bool running = freqHz > STEADY_MIN_FREQ_HZ;
+
+  if (!running) {
+    Lcd_SetCursor(0, 0);
+    Lcd_PrintPadded("Load estimator", LCD_COLS);
+    Lcd_SetCursor(0, 1);
+    Lcd_PrintPadded("stopped", LCD_COLS);
+    return;
+  }
+
+  snprintf(line, sizeof(line), "F%5.2fHz I%4.2fA", freqHz, liveCurrentA);
+  Lcd_SetCursor(0, 0);
+  Lcd_PrintPadded(line, LCD_COLS);
+
+  Lcd_SetCursor(0, 1);
+  if (!liveCurrentValid) {
+    Lcd_PrintPadded("No current data", LCD_COLS);
+  } else {
+    float loadKg = PredictLoadKg(freqHz, liveCurrentA);
+    snprintf(line, sizeof(line), "Load~%5.2f kg", loadKg);
+    Lcd_PrintPadded(line, LCD_COLS);
+  }
 }
 /* USER CODE END 4 */
 
