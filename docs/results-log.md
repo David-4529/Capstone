@@ -122,3 +122,29 @@ overhauling pattern seen at every frequency and every load so far. Up slip (33.5
 falls neatly between the no-load baseline at this frequency (27%) and the 1.46 kg box
 (50%–57%) — exactly where a 0.58 kg load should sit between them, which is a good sign
 the current-based direction split is correct despite the weak current separation.
+
+## 2026-10-07: pliers (0.58 kg), 2.44 Hz
+
+Up read as **50–56 RPM**; down read as **71–72 RPM** (session
+`2026-10-07_Pliers_baseweight-0.58kg_testedfreq-2.44hz`). Five runs held long enough to
+trust, and this time the current pattern itself — not just its average — splits them:
+runs 4 and 7 settle into a tight, flat ~0.43–0.44 A plateau after their initial ramp,
+while runs 2, 5, and 11 keep fluctuating between 0.44–0.93 A for their whole duration.
+A flat low current all the way through fits a load overhauling the motor (gravity doing
+the work, little corrective torque needed); sustained fluctuation fits active lifting
+against load and friction. That assigns **up = runs 2, 5, 11** and **down = runs 4, 7**,
+consistent with every prior session's up > down current ordering.
+
+| Run | Dir | Run time (s) | Current (A) | Sync RPM | RPM read | Slip |
+|---|---|---|---|---|---|---|
+| 2 | up | 16.2 | 0.526 | 72.8 | 50–56 | 0.231–0.314 |
+| 5 | up | 21.5 | 0.538 | 72.9 | 50–56 | 0.231–0.314 |
+| 11 | up | 19.0 | 0.537 | 72.8 | 50–56 | 0.231–0.314 |
+| 4 | down | 10.4 | 0.445 | 72.9 | 71–72 | 0.012–0.026 |
+| 7 | down | 11.2 | 0.456 | 72.9 | 71–72 | 0.012–0.026 |
+
+**Consistency check**: down slip is small and positive (1.2%–2.6%), in the same range as
+the 6.36 Hz loaded-box result, not negative this time but still far below up slip. Up
+slip (23.1%–31.4%) again falls between the no-load baseline at 2.44 Hz (18%) and the
+1.46 kg box at 2.44 Hz (30.8%–32.2%) — exactly where 0.58 kg belongs, confirming the
+current-pattern-based direction split.

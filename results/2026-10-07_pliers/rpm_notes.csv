@@ -3,3 +3,8 @@ session,run,direction,rpm_low,rpm_high,direction_source,note
 2026-10-07_Pliers_baseweight-0.58kg_testedfreq-1.39hz,11,up,24,26,current,0.58kg pliers; clean 34.1s continuous up run - longest of the session; 0.521A
 2026-10-07_Pliers_baseweight-0.58kg_testedfreq-1.39hz,2,down,39,40,current,0.58kg pliers; clean 33.0s continuous down run; 0.518A (lower current, matches down pattern)
 2026-10-07_Pliers_baseweight-0.58kg_testedfreq-1.39hz,9,down,39,40,current,0.58kg pliers; clean 11.4s continuous down run; 0.494A
+2026-10-07_Pliers_baseweight-0.58kg_testedfreq-2.44hz,2,up,50,56,current,0.58kg pliers; 16.2s run; current fluctuates 0.44-0.78A the whole time (sustained lifting effort)
+2026-10-07_Pliers_baseweight-0.58kg_testedfreq-2.44hz,5,up,50,56,current,0.58kg pliers; 21.5s run; fluctuating current 0.44-0.93A, same pattern as run 2
+2026-10-07_Pliers_baseweight-0.58kg_testedfreq-2.44hz,11,up,50,56,current,0.58kg pliers; 19.0s run; fluctuating current 0.46-0.78A, same pattern as runs 2/5
+2026-10-07_Pliers_baseweight-0.58kg_testedfreq-2.44hz,4,down,71,72,current,0.58kg pliers; 10.4s run; current settles to a flat 0.43A plateau (gravity-assisted, little corrective torque needed)
+2026-10-07_Pliers_baseweight-0.58kg_testedfreq-2.44hz,7,down,71,72,current,0.58kg pliers; 11.2s run; same flat ~0.44A plateau as run 4
