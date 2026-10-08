@@ -1,0 +1,5 @@
+session,run,direction,rpm_low,rpm_high,direction_source,note
+2026-10-07_Pliers_baseweight-0.58kg_testedfreq-1.39hz,5,up,24,26,current,0.58kg pliers; clean 27.5s continuous up run; 0.564A (higher current, matches up pattern)
+2026-10-07_Pliers_baseweight-0.58kg_testedfreq-1.39hz,11,up,24,26,current,0.58kg pliers; clean 34.1s continuous up run - longest of the session; 0.521A
+2026-10-07_Pliers_baseweight-0.58kg_testedfreq-1.39hz,2,down,39,40,current,0.58kg pliers; clean 33.0s continuous down run; 0.518A (lower current, matches down pattern)
+2026-10-07_Pliers_baseweight-0.58kg_testedfreq-1.39hz,9,down,39,40,current,0.58kg pliers; clean 11.4s continuous down run; 0.494A

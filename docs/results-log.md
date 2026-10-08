@@ -90,3 +90,35 @@ day), the box's weight was entered as the *baseline* rather than the *load*, and
 was typed into the logger for any run — see the session's own commit history. This
 2026-10-07_1903 session repeats it correctly (load_kg=1.46, baseline_kg=0) and is the
 one to use going forward.
+
+## 2026-10-07: pliers (0.58 kg), 1.39 Hz — first test with the rebuilt logger
+
+First session run with the renamed/cleaned-up logger (`tools/logger/vfd_logger.py`):
+equipment name, weight, and intended test frequency are now asked at startup and
+named the session directly (`2026-10-07_Pliers_baseweight-0.58kg_testedfreq-1.39hz`).
+The `weight_kg` and `target_freq_hz` columns came through correctly in the field.
+
+Up read as **24–26 RPM**; down read as **39–40 RPM**. As in every prior
+session, "down is tough" — most runs are 0–4-steady-row stutters from stopping to help
+the descent. Four runs held long enough to trust (session
+`2026-10-07_Pliers_baseweight-0.58kg_testedfreq-1.39hz`, see `results/2026-10-07_pliers/`).
+
+Current didn't separate up from down as cleanly as at heavier loads (0.49–0.56 A across
+all four, vs. a clear gap at 1.46 kg) — expected, since current is dominated by
+magnetizing current at light load (see the 2026-10-05 no-load baseline notes). Direction
+was assigned by current magnitude (higher = up, matching every prior session), picked to
+match the established up > down ordering; the resulting slip values are not sensitive to
+exactly which pair is which, since all four runs share the same sync RPM (~39.1):
+
+| Run | Dir | Run time (s) | Current (A) | Sync RPM | RPM read | Slip |
+|---|---|---|---|---|---|---|
+| 5 | up | 27.5 | 0.564 | 39.1 | 24–26 | 0.335–0.386 |
+| 11 | up | 34.1 | 0.521 | 39.1 | 24–26 | 0.335–0.386 |
+| 2 | down | 33.0 | 0.518 | 39.1 | 39–40 | −0.023–0.003 |
+| 9 | down | 11.4 | 0.494 | 39.1 | 39–40 | −0.023–0.003 |
+
+**Consistency check**: down slip is again near zero (−2.3% to +0.3%), matching the
+overhauling pattern seen at every frequency and every load so far. Up slip (33.5%–38.6%)
+falls neatly between the no-load baseline at this frequency (27%) and the 1.46 kg box
+(50%–57%) — exactly where a 0.58 kg load should sit between them, which is a good sign
+the current-based direction split is correct despite the weak current separation.

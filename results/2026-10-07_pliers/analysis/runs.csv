@@ -1,0 +1,5 @@
+session,run,direction,direction_source,freq_hz,sync_rpm,current_a,steady_rows,load_kg,baseline_kg,total_kg,rpm,rpm_unc,slip_rpm,slip,slip_unc,file,note
+2026-10-07_Pliers_baseweight-0.58kg_testedfreq-1.39hz,5,up,current,1.3000,39.10,0.5640,108,0.5800,0.0000,0.5800,25.00,1.0000,14.10,0.3606,0.0256,2026-10-07 19:58:58.002,0.58kg pliers; clean 27.5s continuous up run; 0.564A (higher current
+2026-10-07_Pliers_baseweight-0.58kg_testedfreq-1.39hz,11,up,current,1.3000,39.10,0.5210,134,0.5800,0.0000,0.5800,25.00,1.0000,14.10,0.3606,0.0256,2026-10-07 19:59:56.229,0.58kg pliers; clean 34.1s continuous up run - longest of the session; 0.521A
+2026-10-07_Pliers_baseweight-0.58kg_testedfreq-1.39hz,2,down,current,1.3000,39.10,0.5180,131,0.5800,0.0000,0.5800,39.50,0.5000,-0.4000,-0.0102,0.0128,2026-10-07 19:57:58.633,0.58kg pliers; clean 33.0s continuous down run; 0.518A (lower current
+2026-10-07_Pliers_baseweight-0.58kg_testedfreq-1.39hz,9,down,current,1.3000,39.10,0.4940,43,0.5800,0.0000,0.5800,39.50,0.5000,-0.4000,-0.0102,0.0128,2026-10-07 19:59:42.147,0.58kg pliers; clean 11.4s continuous down run; 0.494A
