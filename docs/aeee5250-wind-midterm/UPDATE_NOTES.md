@@ -8,7 +8,7 @@ Status key: [ ] open, [x] done
 
 ## Make it match what the assignment asks for
 
-- [ ] **Fig. 2-1 (candidate sites map):** replace with, or add next to it, NLR Wind Prospector screenshots (100 m wind speed, land use and transmission layers) for Sites A/B/C. The current map is a matplotlib composite I made from public data.
+- [ ] **2.1 Wind Prospector:** add a Wind Prospector screenshot of Sites A/B/C (100 m wind speed, land use and transmission layers). My composite map was removed in the condensed version.
 - [ ] **2.2.1 FAA:** run the FAA OE/AAA Notice Criteria Tool for each site (lat/long, ground elevation 34 / 5 / 1 ft, 492 ft structure height). Paste the results and update the text to match.
 - [ ] **2.2.2 Land cover:** the template asks for NLCD or PAD-US. The current percentages come from ESA WorldCover. Replace them with NLCD values (or a PAD-US Data Explorer check) and add screenshots.
 - [ ] **2.2.3 USFWS:** run IPaC for each project area and replace the expected species list with the official IPaC list.
@@ -20,10 +20,10 @@ Status key: [ ] open, [x] done
 
 ## Citations and captions
 
-- [ ] **All figures made from data** (2-1, 3-1, 3-2, 3-3, 4-1, 4-2, 5-1, 5-2, 5-3, 8-1, 8-2): add data sources to the captions. Do not say "prepared by the authors" unless you rebuild the figures yourselves.
+- [ ] **All figures made from data** (condensed version: 3-1, 3-2, 3-3, 4-1, 8-2): add data sources to the captions. Do not say "prepared by the authors" unless you rebuild the figures yourselves.
 - [ ] **4.1:** cite the current Vestas V110-2.0 MW datasheet (URL and date). The power curve is from the SAM library curve "Vestas V110-2.0".
 - [ ] **6.1 grid price:** check the latest EIA NC industrial price (Electric Power Monthly Table 5.6.A), or switch to a Duke Energy or Dominion industrial rate.
-- [ ] **7 / Ref [16]:** look up and cite the current Perquimans County wind ordinance (setbacks, height, noise, shadow flicker).
+- [ ] **7 / Ref [12]:** look up and cite the current Perquimans County wind ordinance (setbacks, height, noise, shadow flicker).
 - [ ] **References:** reformat to the citation style the instructor requires.
 - [ ] **3.6 (optional):** cite an extreme-wind source (ASCE 7 / NOAA) against the 37.5 m/s Class III limit.
 
