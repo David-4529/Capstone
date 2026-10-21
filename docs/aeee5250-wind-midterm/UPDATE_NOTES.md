@@ -13,7 +13,7 @@ Status key: [ ] open, [x] done
 - [ ] **2.2.2 Land cover:** the template asks for NLCD or PAD-US. The current percentages come from ESA WorldCover. Replace them with NLCD values (or a PAD-US Data Explorer check) and add screenshots.
 - [ ] **2.2.3 USFWS:** run IPaC for each project area and replace the expected species list with the official IPaC list.
 - [ ] **2.2.4 NCNHP:** run the NCNHP Data Explorer (site plus a 1-mile buffer) and replace the text with the report results.
-- [ ] **Section 3 data source:** the template asks for the Lecture 1 MATLAB API script. The data was read from the same WIND Toolkit dataset on AWS. Either re-download it with the MATLAB API (POINT(lon lat), same grid point gid 2266420) or keep the current wording that explains the source.
+- [ ] **Section 3 data source:** Lecture 1 (slide 29) lists two accepted methods, the API or direct HDF5 (HSDS) access. The report data came from the direct HDF5 method, so update the Section 3 wording to cite it. Optional: run `NLR_wind_data_download_SiteA.m` (API method, add your key) to re-download the same data. Its quick check should reproduce 6.52 / 6.91 m/s, α = 0.262, k = 2.40, a = 7.69.
 - [ ] **4.4 / 5.5 / 6.4 SAM (graduate):** the runs used SAM's engine (PySAM), not the SAM desktop application. Repeat them in SAM desktop (Wind + Single Owner) and add screenshots of the inputs and results.
 - [x] **7 Permitting:** cut to one page in the condensed version.
 - [ ] **7 Interconnection:** the template references Duke Energy procedures, but the site is in Dominion/PJM territory. Decide whether to keep the Dominion/PJM explanation or reframe around Duke.
@@ -41,5 +41,7 @@ Status key: [ ] open, [x] done
 - [ ] **Table 2-1:** the land, transmission, wetland and setback rows are preliminary values from OpenStreetMap/ESA WorldCover. Replace them with your Wind Prospector, NLCD and FAA values.
 
 - [x] **5.1:** bin table rebuilt as a compact table (1–10 and 11–20 m/s side by side), and all tables now stay on the same page as their captions.
+
+- [ ] Statistical Review of World Energy and bp Energy Outlook 2025 (Lecture 1 readings): not required by any template section. Only cite them if the instructor wants background context.
 
 <!-- new items go here as you go through the document -->
