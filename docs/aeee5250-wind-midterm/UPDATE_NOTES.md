@@ -2,6 +2,8 @@
 
 Collected while reviewing the filled Word document. Apply everything at the end in one pass.
 
+**Current working version: `Wind_Project_Midterm_Final_Submittal_CONDENSED.docx`** (13 pages). It is trimmed to template length and uses only the assignment's tools. The original 21-page `_FILLED` version is kept for reference.
+
 Status key: [ ] open, [x] done
 
 ## Make it match what the assignment asks for
@@ -13,7 +15,7 @@ Status key: [ ] open, [x] done
 - [ ] **2.2.4 NCNHP:** run the NCNHP Data Explorer (site plus a 1-mile buffer) and replace the text with the report results.
 - [ ] **Section 3 data source:** the template asks for the Lecture 1 MATLAB API script. The data was read from the same WIND Toolkit dataset on AWS. Either re-download it with the MATLAB API (POINT(lon lat), same grid point gid 2266420) or keep the current wording that explains the source.
 - [ ] **4.4 / 5.5 / 6.4 SAM (graduate):** the runs used SAM's engine (PySAM), not the SAM desktop application. Repeat them in SAM desktop (Wind + Single Owner) and add screenshots of the inputs and results.
-- [ ] **7 Permitting:** the template says one page maximum. The table currently runs past one page, so it needs shortening.
+- [x] **7 Permitting:** cut to one page in the condensed version.
 - [ ] **7 Interconnection:** the template references Duke Energy procedures, but the site is in Dominion/PJM territory. Decide whether to keep the Dominion/PJM explanation or reframe around Duke.
 
 ## Citations and captions
@@ -33,5 +35,9 @@ Status key: [ ] open, [x] done
 - [ ] Rework the text in your own words and make sure both team members can explain every number.
 
 ## Notes added during review
+
+- [x] Condensed the whole document to template length, and removed figures I had added (composite map, wind rose, monthly, diurnal-power and duration charts) plus extra sensitivity text.
+- [ ] **8.1 Site plan:** open `SiteA_layout.kml` in Google Earth (turbines, collection lines, project substation, POI, gen-tie), take a screenshot, and insert it as Figure 8-1.
+- [ ] **Table 2-1:** the land, transmission, wetland and setback rows are preliminary values from OpenStreetMap/ESA WorldCover. Replace them with your Wind Prospector, NLCD and FAA values.
 
 <!-- new items go here as you go through the document -->
