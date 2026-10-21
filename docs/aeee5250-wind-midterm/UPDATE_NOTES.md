@@ -40,4 +40,6 @@ Status key: [ ] open, [x] done
 - [ ] **8.1 Site plan:** open `SiteA_layout.kml` in Google Earth (turbines, collection lines, project substation, POI, gen-tie), take a screenshot, and insert it as Figure 8-1.
 - [ ] **Table 2-1:** the land, transmission, wetland and setback rows are preliminary values from OpenStreetMap/ESA WorldCover. Replace them with your Wind Prospector, NLCD and FAA values.
 
+- [x] **5.1:** bin table rebuilt as a compact table (1–10 and 11–20 m/s side by side), and all tables now stay on the same page as their captions.
+
 <!-- new items go here as you go through the document -->
