@@ -39,6 +39,25 @@ RESULTS_GLOB = os.path.join(ROOT, "results", "*", "analysis", "groups.csv")
 # re-clustering floats across files, since each file already clustered internally.
 TARGET_FREQS_HZ = [1.39, 2.44, 4.85, 6.36]
 
+# Session current offset, applied to every reading before the fit (current_a + this).
+#
+# Derived 2026-10-24 from a single held-out validation run: a 0.64 kg object, not
+# part of the original calibration set, predicted low at both 1.44 Hz (predicted
+# 0.27 kg) and 6.21 Hz (predicted 0.18 kg) - the same ~0.04 A gap at two very
+# different frequencies, which points to a constant offset (rigging/sensor drift
+# since the original calibration, weeks earlier) rather than per-frequency model
+# error. Solving each frequency's line for the offset that would have predicted
+# 0.64 kg exactly gives 0.0405 A (1.44 Hz) and 0.0408 A (6.21 Hz) - close enough
+# that averaging them is reasonable.
+#
+# This is a one-point correction, not a recalibration - it assumes the offset is
+# constant across frequency and stays constant over time, neither of which is
+# verified. Replace it (ideally with zero) the next time a fresh no-load run is
+# logged: compare that run's current to the matching baseline row in
+# results/2026-10-05/analysis/groups.csv at the same frequency, and set this to
+# that difference instead.
+CURRENT_OFFSET_A = 0.0406
+
 
 def nearest_target(freq_hz):
     return min(TARGET_FREQS_HZ, key=lambda t: abs(t - freq_hz))
@@ -104,7 +123,8 @@ def predict(model, freq_hz, current_a):
     if not model:
         return None
     entry = min(model, key=lambda m: abs(m["freq_hz"] - freq_hz))
-    load = entry["slope_kg_per_a"] * current_a + entry["intercept_kg"]
+    corrected_a = current_a + CURRENT_OFFSET_A
+    load = entry["slope_kg_per_a"] * corrected_a + entry["intercept_kg"]
     return max(load, 0.0), entry
 
 
@@ -168,7 +188,8 @@ def main():
         freq_hz, current_a = args.predict
         load, entry = predict(model, freq_hz, current_a)
         print(f"\npredicted load at {freq_hz:.2f} Hz, {current_a:.3f} A "
-              f"(using {entry['freq_hz']:.2f} Hz calibration): {load:.3f} kg")
+              f"(+{CURRENT_OFFSET_A:.4f} A session offset = {current_a + CURRENT_OFFSET_A:.3f} A, "
+              f"using {entry['freq_hz']:.2f} Hz calibration): {load:.3f} kg")
 
 
 if __name__ == "__main__":
