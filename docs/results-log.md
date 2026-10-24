@@ -369,3 +369,30 @@ calibration points, one per object) rather than at drift. The fix is more real
 calibration data - ideally testing a new known object across all four standard
 frequencies the way the original three objects were, not patching blind-test
 results with a guessed offset.
+
+## 2026-10-24: added the "Resitorx2" point (0.82 kg) as real calibration data
+
+Added to `results/2026-10-24_resistorx2/` as a fourth calibration object - current
+only, no RPM/slip (no shaft reading was taken during the blind test, so
+`tools/analysis/analyze.py`'s pipeline doesn't apply; `analysis/groups.csv` was
+built directly with just the columns `fit_model.py` needs: freq_hz, direction,
+total_kg, current_mean/std). Tested near 2.90 Hz (4 runs, mean 0.554 A) and 4.66 Hz
+(3 runs, mean 0.798 A), both bucketed by `fit_model.py`'s nearest-frequency rule
+into the 2.44 Hz and 4.85 Hz calibration lines respectively.
+
+Refitting with this point included:
+
+| Freq (Hz) | Before (r²) | After (r²) | What changed |
+|---|---|---|---|
+| 2.44 | 0.9906 (n=4) | 0.9906 (n=5) | barely - the point fits this line well |
+| 4.85 | 0.9831 (n=4) | **0.5077** (n=5) | fit quality collapsed |
+
+The 2.44 Hz line absorbed the new point cleanly - consistent with the earlier blind
+prediction at 2.90 Hz using the *old* 2.44 Hz line already landing close (0.87 kg
+predicted vs 0.82 kg actual, with zero correction). The 4.85 Hz line did not: adding
+the 4.66 Hz point more than halved its r². Both points were kept rather than
+dropping the one that hurt the fit - cherry-picking which real data to keep because
+it makes r² look better would be worse than an honestly lower r². The 4.85 Hz line's
+r² = 0.98 before this was likely overconfident (fit from only 4 points, one per
+object, all exactly in-sample); 0.51 is a more honest read of how well it
+generalizes, and is itself a useful finding for the paper's limitations section.

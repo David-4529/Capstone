@@ -14,10 +14,10 @@
     },
     {
       "freq_hz": 2.44,
-      "slope_kg_per_a": 9.7665,
-      "intercept_kg": -4.6141,
+      "slope_kg_per_a": 9.798,
+      "intercept_kg": -4.6263,
       "r2": 0.9906,
-      "n_points": 4,
+      "n_points": 5,
       "current_range_a": [
         0.466,
         0.619
@@ -25,12 +25,12 @@
     },
     {
       "freq_hz": 4.85,
-      "slope_kg_per_a": 11.9175,
-      "intercept_kg": -9.7091,
-      "r2": 0.9831,
-      "n_points": 4,
+      "slope_kg_per_a": 7.2895,
+      "intercept_kg": -5.5671,
+      "r2": 0.5077,
+      "n_points": 5,
       "current_range_a": [
-        0.814,
+        0.798,
         0.933
       ]
     },

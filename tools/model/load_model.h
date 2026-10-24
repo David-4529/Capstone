@@ -14,8 +14,8 @@ typedef struct {
 #define LOAD_MODEL_N 4
 static const LoadModelEntry LOAD_MODEL[LOAD_MODEL_N] = {
   { 1.39f, 8.6762f, -4.1364f }, // r2=0.998, n=3, current 0.476-0.542 A
-  { 2.44f, 9.7665f, -4.6141f }, // r2=0.991, n=4, current 0.466-0.619 A
-  { 4.85f, 11.9175f, -9.7091f }, // r2=0.983, n=4, current 0.814-0.933 A
+  { 2.44f, 9.7980f, -4.6263f }, // r2=0.991, n=5, current 0.466-0.619 A
+  { 4.85f, 7.2895f, -5.5671f }, // r2=0.508, n=5, current 0.798-0.933 A
   { 6.36f, 11.2032f, -7.9392f }, // r2=0.992, n=4, current 0.704-0.837 A
 };
 
