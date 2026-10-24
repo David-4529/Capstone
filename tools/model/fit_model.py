@@ -39,24 +39,19 @@ RESULTS_GLOB = os.path.join(ROOT, "results", "*", "analysis", "groups.csv")
 # re-clustering floats across files, since each file already clustered internally.
 TARGET_FREQS_HZ = [1.39, 2.44, 4.85, 6.36]
 
-# Session current offset, applied to every reading before the fit (current_a + this).
-#
-# Derived 2026-10-24 from a single held-out validation run: a 0.64 kg object, not
-# part of the original calibration set, predicted low at both 1.44 Hz (predicted
-# 0.27 kg) and 6.21 Hz (predicted 0.18 kg) - the same ~0.04 A gap at two very
-# different frequencies, which points to a constant offset (rigging/sensor drift
-# since the original calibration, weeks earlier) rather than per-frequency model
-# error. Solving each frequency's line for the offset that would have predicted
-# 0.64 kg exactly gives 0.0405 A (1.44 Hz) and 0.0408 A (6.21 Hz) - close enough
-# that averaging them is reasonable.
-#
-# This is a one-point correction, not a recalibration - it assumes the offset is
-# constant across frequency and stays constant over time, neither of which is
-# verified. Replace it (ideally with zero) the next time a fresh no-load run is
-# logged: compare that run's current to the matching baseline row in
-# results/2026-10-05/analysis/groups.csv at the same frequency, and set this to
-# that difference instead.
-CURRENT_OFFSET_A = 0.0406
+# Tried and reverted 2026-10-24: a single held-out 0.64 kg run underpredicted at both
+# its test frequencies by a similar ~0.04 A, which looked like a constant current
+# offset (rigging/sensor drift since calibration). Adding +0.0406 A to every reading
+# "fixed" that one point - but the next held-out run (0.82 kg) broke the theory: its
+# 2.44 Hz line was already correct with NO correction (0.87 kg predicted, actual
+# 0.82 kg), while its 4.85 Hz line stayed badly wrong even WITH the correction
+# (predicted 0.37 kg, actual 0.82 kg). A real constant offset would have helped both
+# predictions, or at least not hurt a correct one. It did the opposite. Two points is
+# too little data to fit a correction term - this was overfit to coincidence, not a
+# real effect. No current offset is applied; see docs/results-log.md for both
+# validation runs and what to do instead (collect real calibration data at these
+# objects/frequencies rather than patch a blind guess).
+CURRENT_OFFSET_A = 0.0
 
 
 def nearest_target(freq_hz):

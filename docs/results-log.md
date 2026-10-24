@@ -339,3 +339,33 @@ table is pasted into `firmware/stm32/Core/Src/main.c` to drive the new HMI displ
 LCD showing live frequency/current and the predicted weight, wired on I2C1
 (PB8/PB9, both previously unused). Re-run `tools/model/fit_model.py` and re-paste
 the table after logging any new calibration object.
+
+## 2026-10-24: two blind held-out predictions - the model needs real recalibration
+
+Ran the model live against two objects not in the original calibration set, over
+serial, to see how it holds up. Neither run's RPM was captured (no shaft reading
+was taken, only frequency/current), so these are current-only predictions, not
+logged into `results/` as proper calibration points - just a sanity check.
+
+**Object 1, actual 0.64 kg**, tested near 1.44 Hz and 6.21 Hz. Both predictions came
+in low: 0.27 kg and 0.18 kg respectively - both roughly 0.35-0.46 kg under. The two
+gaps, converted to a current offset, were suspiciously close (0.0405 A and 0.0408 A),
+which looked like a constant current drift (rigging or sensor, since the original
+calibration was weeks old by this point) and got added to `fit_model.py` as
+`CURRENT_OFFSET_A = 0.0406`.
+
+**Object 2 ("Resitorx2"), actual 0.82 kg**, tested near 2.90 Hz and 4.66 Hz, broke
+that theory. With no offset at all, the 2.44 Hz line predicted 0.87 kg - almost
+exactly right. The 4.85 Hz line, even with the offset applied, predicted 0.37 kg -
+still 0.45 kg short. A real constant offset would have helped (or at least not
+hurt) both; instead it overcorrected the one that was already fine and still didn't
+fix the other. `CURRENT_OFFSET_A` was reverted to 0 the same day.
+
+**Conclusion**: two points is not enough to fit a correction term - the first
+"fix" was overfit to coincidence. The real pattern across both tests is that
+prediction error varies a lot by frequency and doesn't move as a block, which
+points at the original per-frequency lines themselves (each fit from only 3-4
+calibration points, one per object) rather than at drift. The fix is more real
+calibration data - ideally testing a new known object across all four standard
+frequencies the way the original three objects were, not patching blind-test
+results with a guessed offset.
