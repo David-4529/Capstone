@@ -1,0 +1,12 @@
+session,run,direction,rpm_low,rpm_high,direction_source,note
+2026-10-05_2129,1,up,29,32,recorded,RPM 30 was typed after run 2 in the logger; it belongs to run 1
+2026-10-05_2129,2,down,38,38,recorded,
+2026-10-05_2133,1,up,59,61,inferred,direction inferred from run order and current
+2026-10-05_2133,2,down,69,70,inferred,
+2026-10-05_2133,4,up,59,61,inferred,
+2026-10-05_2136,2,up,137,138,inferred,a down reading of 141 RPM has no matching logged run
+2026-10-05_2139,1,up,180,180,inferred,one RPM per direction given for the session
+2026-10-05_2139,2,down,186,186,inferred,
+2026-10-05_2139,3,up,180,180,inferred,
+2026-10-05_2139,4,down,186,186,inferred,
+2026-10-05_2139,5,up,180,180,inferred,

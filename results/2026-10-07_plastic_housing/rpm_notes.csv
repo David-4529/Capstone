@@ -1,0 +1,19 @@
+session,run,direction,rpm_low,rpm_high,direction_source,note
+2026-10-07_PlasticHousing_baseweight-0.32kg_testedfreq-1.39hz,1,up,28,28,user-confirmed,0.32kg plastic housing; 31.5s run; no current separation at this frequency - direction confirmed by user (alternating technique: up/down/up/down)
+2026-10-07_PlasticHousing_baseweight-0.32kg_testedfreq-1.39hz,3,up,28,28,user-confirmed,0.32kg plastic housing; 32.3s run; same as run 1
+2026-10-07_PlasticHousing_baseweight-0.32kg_testedfreq-1.39hz,2,down,39,42,user-confirmed,0.32kg plastic housing; 15.5s run; no current separation at this frequency - direction confirmed by user
+2026-10-07_PlasticHousing_baseweight-0.32kg_testedfreq-1.39hz,4,down,39,42,user-confirmed,0.32kg plastic housing; 18.8s run; same as run 2
+2026-10-07_PlasticHousing_baseweight-0.32kg_testedfreq-2.44hz,1,up,55,58,current,0.32kg plastic housing; 20.3s run; fluctuating current 0.46-0.58A, matches run 13's pattern
+2026-10-07_PlasticHousing_baseweight-0.32kg_testedfreq-2.44hz,13,up,55,58,current,0.32kg plastic housing; 17.0s run (ends at a genuine stop); fluctuating 0.46-0.56A, same pattern as run 1
+2026-10-07_PlasticHousing_baseweight-0.32kg_testedfreq-2.44hz,5,down,70,72,current,0.32kg plastic housing; 13.6s run; tight flat 0.43-0.45A plateau
+2026-10-07_PlasticHousing_baseweight-0.32kg_testedfreq-4.85hz,2,up,135,136,current,0.32kg plastic housing; 8.5s run; settles 0.82-0.85A after initial transient
+2026-10-07_PlasticHousing_baseweight-0.32kg_testedfreq-4.85hz,12,up,135,136,current,0.32kg plastic housing; 10.3s run; settles 0.81-0.86A after initial transient
+2026-10-07_PlasticHousing_baseweight-0.32kg_testedfreq-4.85hz,23,up,135,136,current,0.32kg plastic housing; 14.3s run; settles 0.80-0.84A after a messy start
+2026-10-07_PlasticHousing_baseweight-0.32kg_testedfreq-4.85hz,6,down,143,143,current,0.32kg plastic housing; 5.6s run; tight flat 0.69-0.72A plateau
+2026-10-07_PlasticHousing_baseweight-0.32kg_testedfreq-4.85hz,13,down,143,143,current,0.32kg plastic housing; 5.6s run; tight flat 0.72-0.75A plateau
+2026-10-07_PlasticHousing_baseweight-0.32kg_testedfreq-6.36hz,10,up,178,178,current,0.32kg plastic housing; 6.2s run; settles 0.73-0.76A plateau (UP cluster)
+2026-10-07_PlasticHousing_baseweight-0.32kg_testedfreq-6.36hz,14,up,178,178,current,0.32kg plastic housing; 6.0s run; settles 0.73-0.76A plateau (UP cluster)
+2026-10-07_PlasticHousing_baseweight-0.32kg_testedfreq-6.36hz,16,up,178,178,current,0.32kg plastic housing; 6.8s run; settles 0.72-0.75A plateau (UP cluster)
+2026-10-07_PlasticHousing_baseweight-0.32kg_testedfreq-6.36hz,8,down,187,187,current,0.32kg plastic housing; 8.2s run; settles ~0.62A tight plateau (DOWN cluster)
+2026-10-07_PlasticHousing_baseweight-0.32kg_testedfreq-6.36hz,13,down,187,187,current,0.32kg plastic housing; 5.6s run; settles ~0.62-0.64A plateau (DOWN cluster)
+2026-10-07_PlasticHousing_baseweight-0.32kg_testedfreq-6.36hz,15,down,187,187,current,0.32kg plastic housing; 5.4s run; settles ~0.62-0.65A plateau (DOWN cluster)

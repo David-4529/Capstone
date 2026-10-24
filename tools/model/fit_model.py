@@ -1,0 +1,175 @@
+"""Fit a load-estimation model from the calibration data under results/*/analysis/.
+
+Why current, not slip: slip (sync RPM - shaft RPM) is the more load-sensitive
+signal (see docs/results-log.md), but shaft RPM on this rig is read by eye off the
+ActiveServo display and typed in by hand during calibration - there is no shaft
+encoder, so it is not available automatically once the rig is running on its own.
+Output current, on the other hand, is already read over Modbus every logger cycle
+(REG_OUTPUT_CURRENT in firmware/stm32/Core/Src/main.c) with no manual step. Across
+all four calibration objects (no-load, 0.32 kg, 0.58 kg, 1.46 kg) current rises
+monotonically with load at every test frequency in the up (lifting) direction, so
+it is the only signal that supports a standalone live weight estimate.
+
+Down-direction (lowering) current does NOT track load - the open-loop V/Hz drive
+has no dynamic braking, so a descending load overhauls the motor regardless of its
+weight (see docs/results-log.md). This model is therefore up-direction-only and
+should not be trusted while lowering.
+
+Fits one straight line (load_kg = a * current_a + b) per calibration test
+frequency, by ordinary least squares, then writes:
+  tools/model/load_model.json   coefficients + fit stats, human-readable
+  tools/model/load_model.h      the same, as a C lookup table for the firmware
+
+Usage:
+  python tools/model/fit_model.py
+  python tools/model/fit_model.py --predict 4.85 0.90    # freq_hz, current_a
+"""
+
+import argparse
+import csv
+import glob
+import json
+import os
+
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+RESULTS_GLOB = os.path.join(ROOT, "results", "*", "analysis", "groups.csv")
+
+# The project's four standard test frequencies. Calibration runs land close to one
+# of these (hand-set pot, so e.g. 6.36-6.37 Hz) - bucket by nearest rather than
+# re-clustering floats across files, since each file already clustered internally.
+TARGET_FREQS_HZ = [1.39, 2.44, 4.85, 6.36]
+
+
+def nearest_target(freq_hz):
+    return min(TARGET_FREQS_HZ, key=lambda t: abs(t - freq_hz))
+
+
+def load_points():
+    """Returns {target_freq_hz: [(current_a, load_kg), ...]} from every up-direction
+    calibration group that has a current reading."""
+    buckets = {f: [] for f in TARGET_FREQS_HZ}
+    for path in sorted(glob.glob(RESULTS_GLOB)):
+        with open(path, newline="", encoding="utf-8") as fh:
+            for row in csv.DictReader(fh):
+                if row["direction"] != "up":
+                    continue
+                current = row.get("current_mean", "")
+                if current == "" or current is None:
+                    continue  # e.g. the box's single 1.39 Hz run: current not captured
+                freq_hz = float(row["freq_hz"])
+                bucket = nearest_target(freq_hz)
+                buckets[bucket].append((float(current), float(row["total_kg"])))
+    return buckets
+
+
+def fit_line(points):
+    """Ordinary least squares load_kg = a * current_a + b. Returns (a, b, r2)."""
+    n = len(points)
+    xs = [p[0] for p in points]
+    ys = [p[1] for p in points]
+    mean_x = sum(xs) / n
+    mean_y = sum(ys) / n
+    sxy = sum((x - mean_x) * (y - mean_y) for x, y in points)
+    sxx = sum((x - mean_x) ** 2 for x in xs)
+    a = sxy / sxx
+    b = mean_y - a * mean_x
+    ss_tot = sum((y - mean_y) ** 2 for y in ys)
+    ss_res = sum((y - (a * x + b)) ** 2 for x, y in points)
+    r2 = 1.0 - ss_res / ss_tot if ss_tot > 0 else 1.0
+    return a, b, r2
+
+
+def build_model():
+    buckets = load_points()
+    model = []
+    for freq in TARGET_FREQS_HZ:
+        points = buckets[freq]
+        if len(points) < 2:
+            print(f"!! {freq} Hz: only {len(points)} calibration point(s) - skipped")
+            continue
+        a, b, r2 = fit_line(points)
+        currents = [p[0] for p in points]
+        model.append({
+            "freq_hz": freq,
+            "slope_kg_per_a": round(a, 4),
+            "intercept_kg": round(b, 4),
+            "r2": round(r2, 4),
+            "n_points": len(points),
+            "current_range_a": [round(min(currents), 3), round(max(currents), 3)],
+        })
+    return model
+
+
+def predict(model, freq_hz, current_a):
+    if not model:
+        return None
+    entry = min(model, key=lambda m: abs(m["freq_hz"] - freq_hz))
+    load = entry["slope_kg_per_a"] * current_a + entry["intercept_kg"]
+    return max(load, 0.0), entry
+
+
+def write_json(model, path):
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump({
+            "description": "Up-direction (lifting) load_kg = slope_kg_per_a * current_a + intercept_kg, one fit per test frequency. Not valid in the down (lowering) direction - see fit_model.py docstring.",
+            "frequencies": model,
+        }, fh, indent=2)
+        fh.write("\n")
+    print(f"wrote {path}")
+
+
+def write_c_header(model, path):
+    lines = [
+        "// Auto-generated by tools/model/fit_model.py - do not edit by hand.",
+        "// Regenerate after adding calibration data: python tools/model/fit_model.py",
+        "#ifndef LOAD_MODEL_H",
+        "#define LOAD_MODEL_H",
+        "",
+        "// load_kg = slope_kg_per_a * current_a + intercept_kg, for the nearest freq_hz.",
+        "// Up (lifting) direction only - see tools/model/fit_model.py for why.",
+        "typedef struct {",
+        "  float freq_hz;",
+        "  float slope_kg_per_a;",
+        "  float intercept_kg;",
+        "} LoadModelEntry;",
+        "",
+        f"#define LOAD_MODEL_N {len(model)}",
+        "static const LoadModelEntry LOAD_MODEL[LOAD_MODEL_N] = {",
+    ]
+    for m in model:
+        lines.append(
+            f"  {{ {m['freq_hz']:.2f}f, {m['slope_kg_per_a']:.4f}f, {m['intercept_kg']:.4f}f }}, "
+            f"// r2={m['r2']:.3f}, n={m['n_points']}, current {m['current_range_a'][0]:.3f}-{m['current_range_a'][1]:.3f} A"
+        )
+    lines += ["};", "", "#endif // LOAD_MODEL_H", ""]
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write("\n".join(lines))
+    print(f"wrote {path}")
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--predict", nargs=2, metavar=("FREQ_HZ", "CURRENT_A"), type=float,
+                     help="print a predicted load for this frequency/current instead of refitting files")
+    args = ap.parse_args()
+
+    model = build_model()
+    out_dir = os.path.dirname(os.path.abspath(__file__))
+    write_json(model, os.path.join(out_dir, "load_model.json"))
+    write_c_header(model, os.path.join(out_dir, "load_model.h"))
+
+    print(f"\n{'Hz':>6} {'slope (kg/A)':>13} {'intercept (kg)':>15} {'r2':>7} {'n':>3}  current range (A)")
+    for m in model:
+        lo, hi = m["current_range_a"]
+        print(f"{m['freq_hz']:6.2f} {m['slope_kg_per_a']:13.4f} {m['intercept_kg']:15.4f} "
+              f"{m['r2']:7.4f} {m['n_points']:3d}  {lo:.3f}-{hi:.3f}")
+
+    if args.predict:
+        freq_hz, current_a = args.predict
+        load, entry = predict(model, freq_hz, current_a)
+        print(f"\npredicted load at {freq_hz:.2f} Hz, {current_a:.3f} A "
+              f"(using {entry['freq_hz']:.2f} Hz calibration): {load:.3f} kg")
+
+
+if __name__ == "__main__":
+    main()
