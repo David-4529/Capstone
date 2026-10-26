@@ -55,4 +55,6 @@ Status key: [ ] open, [x] done
 
 - [x] **8.2 SLD simplified:** redrawn with IEEE 315 / ANSI C37.2 symbols and device numbers (52 breaker, 89 disconnect), one top-to-bottom path, POI at the utility end, data center on the 34.5 kV bus, and a symbol legend. The 8.2 paragraph was updated to match.
 
+- [x] **8.2 SLD:** removed the project substation callout and the legend; device tags now include type (52-x-CB breakers, 89-DS disconnect). The 8.2 paragraph was updated to match.
+
 <!-- new items go here as you go through the document -->
