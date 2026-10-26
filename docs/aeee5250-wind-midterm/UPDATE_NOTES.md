@@ -2,7 +2,7 @@
 
 Collected while reviewing the filled Word document. Apply everything at the end in one pass.
 
-**Current working version: `Wind_Project_-_Midterm_Final_Submittal_2.docx`**, your edited document with Section 2.2 and the single-line diagram added. Older versions (`_CONDENSED`, `_FILLED`) are kept for reference.
+**Current working version: `Wind_Project_-_Midterm_Final_Submittal_4.docx`**, your Submittal_3 with all review fixes applied. Older versions are kept for reference.
 
 Status key: [ ] open, [x] done
 
@@ -46,15 +46,18 @@ Status key: [ ] open, [x] done
 
 - [x] **2.2 intro + 2.2.1–2.2.4:** rewritten from your FAA, PAD-US, IPaC and NCNHP results. Caption typo "MCNHP" changed to "NCNHP".
 - [x] **8.2 SLD:** Figure 8-2 added (4 feeders × 4 turbines to match your site plan, 5.8 km gen-tie) with a description paragraph. Section 8.1 text changed from 2.8 km to 5.8 km.
-- [ ] **2.2.1 distances:** the new text uses the Table 2-1 distances (KEDE 9.5 mi, USCG 7.3 mi, Hyde Co. 3.5 mi) and the 28 mi radar zone. Your earlier text said ~10 / ~10 / ~5 mi and a 30 mi zone. Keep Table 2-1 and the text consistent.
+- [x] **2.2.1 distances:** the new text uses the Table 2-1 distances (KEDE 9.5 mi, USCG 7.3 mi, Hyde Co. 3.5 mi) and the 28 mi radar zone. Your earlier text said ~10 / ~10 / ~5 mi and a 30 mi zone. Keep Table 2-1 and the text consistent.
 - [ ] **IPaC table (2-2-3-1):** check it against the IPaC output. For Site C, red knot, eastern black rail and red-cockaded woodpecker appear in both the Endangered and Threatened rows. The monarch is listed Endangered for Site C but Threatened for A/B (IPaC shows it as proposed threatened). The tricolored bat is "proposed endangered".
-- [ ] **Table 2-1 Wetlands row:** Sites B and C say "Feasible, but land is fragmented" / "Feasible", which looks copied from the setbacks row. Should read something like "Extensive (marsh, open water)" / "Extensive (herbaceous wetland)".
-- [ ] **Duplicate caption:** both the screening table and the yearly wind speed table are captioned "Table 2-1". Renumber one (e.g., Table 2-2).
-- [ ] **Section 2.1 figure captions:** the screenshots appear to be from the NLR WRDB (Wind Resource Database) viewer. If so, name it that way in the captions rather than "WIND Prospector".
+- [x] **Table 2-1 Wetlands row:** Sites B and C say "Feasible, but land is fragmented" / "Feasible", which looks copied from the setbacks row. Should read something like "Extensive (marsh, open water)" / "Extensive (herbaceous wetland)".
+- [x] **Duplicate caption:** both the screening table and the yearly wind speed table are captioned "Table 2-1". Renumber one (e.g., Table 2-2).
+- [x] **Section 2.1 figure captions:** the screenshots appear to be from the NLR WRDB (Wind Resource Database) viewer. If so, name it that way in the captions rather than "WIND Prospector".
 - [x] **Section 4.3 / Figure 4-1:** they still describe 5 rows (2/7/3/1/3), but your site plan uses 4 rows of 4. Update the text and redraw Figure 4-1 to match. Your rows also run east–west, while 4.3 says rows are perpendicular to the 210° wind; either rotate the rows or adjust the wording. **Done:** Figure 4-1 redrawn as 4 rows of 4 (550 m × 1,100 m, rows east–west) and the 4.3 text updated.
 
 - [x] **8.2 SLD simplified:** redrawn with IEEE 315 / ANSI C37.2 symbols and device numbers (52 breaker, 89 disconnect), one top-to-bottom path, POI at the utility end, data center on the 34.5 kV bus, and a symbol legend. The 8.2 paragraph was updated to match.
 
 - [x] **8.2 SLD:** removed the project substation callout and the legend; device tags now include type (52-x-CB breakers, 89-DS disconnect). The 8.2 paragraph was updated to match.
+
+- [x] **Review fixes applied to Submittal_3 → Submittal_4:** 2.1 captions (WRDB), Table 2-1 Wetlands row, yearly table rounding and renumbering (Table 2-2); 2.2.1–2.2.4 rewritten from your tool results; IPaC caption style; NCNHP typo; 2.3 ~4 mi; 3.2/3.3 sub/superscripts; 4.4 SAM paragraph and Figure 4-2 caption; 5.2 monthly/daily numbers; 8.1 5.8 km; 8.2 paragraph style; Eqs. (8), (16), (17) summation.
+- [ ] **Still yours:** Section 7 Duke vs. Dominion wording; IPaC table double-listings for Site C (check IPaC output); Figure 6-4 reuses the 5.5 SAM screenshot (optional: use the SAM Cash flow tab instead).
 
 <!-- new items go here as you go through the document -->
