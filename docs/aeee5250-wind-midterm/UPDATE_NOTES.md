@@ -2,7 +2,7 @@
 
 Collected while reviewing the filled Word document. Apply everything at the end in one pass.
 
-**Current working version: `Wind_Project_-_Midterm_Final_Submittal_4.docx`**, your Submittal_3 with all review fixes applied. Older versions are kept for reference.
+**Current working version: `Wind_Project_-_Midterm_Final_Submittal_8.docx`**, your Submittal_7 with the Section 3.6 extreme-wind check added. Older versions are kept for reference.
 
 Status key: [ ] open, [x] done
 
@@ -25,7 +25,7 @@ Status key: [ ] open, [x] done
 - [ ] **6.1 grid price:** check the latest EIA NC industrial price (Electric Power Monthly Table 5.6.A), or switch to a Duke Energy or Dominion industrial rate.
 - [ ] **7 / Ref [12]:** look up and cite the current Perquimans County wind ordinance (setbacks, height, noise, shadow flicker).
 - [ ] **References:** reformat to the citation style the instructor requires.
-- [ ] **3.6 (optional):** cite an extreme-wind source (ASCE 7 / NOAA) against the 37.5 m/s Class III limit.
+- [x] **3.6 extreme wind:** Gumbel fit of WIND Toolkit annual maxima (2007–2014, includes Hurricane Irene): V_ref,site = 27.2 m/s, V_e50 ≈ 38.1 m/s, both within Class III (37.5 / 53.5 m/s). Added as Table 3-3 with the calculation. ASCE Hazard Tool confirmation noted for final design.
 
 ## Final checks
 
