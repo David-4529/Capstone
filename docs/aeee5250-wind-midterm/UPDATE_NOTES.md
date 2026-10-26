@@ -53,4 +53,6 @@ Status key: [ ] open, [x] done
 - [ ] **Section 2.1 figure captions:** the screenshots appear to be from the NLR WRDB (Wind Resource Database) viewer. If so, name it that way in the captions rather than "WIND Prospector".
 - [ ] **Section 4.3 / Figure 4-1:** they still describe 5 rows (2/7/3/1/3), but your site plan uses 4 rows of 4. Update the text and redraw Figure 4-1 to match. Your rows also run east–west, while 4.3 says rows are perpendicular to the 210° wind; either rotate the rows or adjust the wording.
 
+- [x] **8.2 SLD simplified:** redrawn with IEEE 315 / ANSI C37.2 symbols and device numbers (52 breaker, 89 disconnect), one top-to-bottom path, POI at the utility end, data center on the 34.5 kV bus, and a symbol legend. The 8.2 paragraph was updated to match.
+
 <!-- new items go here as you go through the document -->
