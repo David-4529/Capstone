@@ -39,7 +39,15 @@
 #define REG_OUTPUT_FREQUENCY 0x2103
 #define REG_OUTPUT_CURRENT 0x2104
 #define MOTOR_POLE_COUNT 4
-#define LOG_INTERVAL_MS 2000
+// 250 ms so a short run still logs plenty of rows for the PC logger's steady-state
+// averaging; matches the actual rate seen in every real session log (~204-250 ms
+// between rows), not the 2000 ms this was previously set to.
+#define LOG_INTERVAL_MS 250
+// A row counts as steady when output frequency is above this and moved no more than
+// STEADY_FREQ_TOL_HZ since the previous row (i.e. not ramping). Consumed by the PC
+// logger (tools/logger/vfd_logger.py) to pick out each run's settled plateau.
+#define STEADY_MIN_FREQ_HZ 0.5f
+#define STEADY_FREQ_TOL_HZ 0.05f
 
 // --- HMI: 16x2 I2C LCD (PCF8574 backpack) + 4x4 matrix keypad ---
 #define LCD_I2C_ADDR (0x27 << 1) // HAL wants the 8-bit address; try (0x3F << 1) if the LCD doesn't respond
@@ -78,6 +86,7 @@ static volatile bool lineReady = false;
 // --- HMI state ---
 static float lastFreqHz = 0.0f;
 static float lastCurrentA = 0.0f;
+static float prevFreqHz = 0.0f; // previous LogDataPoint() reading, for the steady-row check below
 
 typedef enum { HMI_IDLE, HMI_ENTER_LOAD, HMI_ENTER_RPM, HMI_ENTER_FREQ, HMI_ENTER_CURRENT } HmiMode;
 static HmiMode hmiMode = HMI_IDLE;
@@ -158,7 +167,9 @@ int main(void)
 
   HAL_UART_Receive_IT(&huart2, &rxByte, 1);
 
-  UartPrint("# millis,freq_hz,freq_source,sync_rpm,actual_rpm,slip,current_a,current_source,known_load_kg\r\n");
+  UartPrint("# millis,freq_hz,freq_source,sync_rpm,actual_rpm,slip,current_a,current_source,known_load_kg,test_id,steady\r\n");
+  UartPrint("# test_id is always 0 - no TEST/STOP session tracking on this build; the PC logger\r\n");
+  UartPrint("# (tools/logger/vfd_logger.py) segments runs from freq_hz and steady on its own.\r\n");
   UartPrint("# send 'LOAD <kg>' 'RPM <value>' 'FREQ <hz>' 'CURRENT <amps>' over serial\r\n");
   UartPrint("# send 'DEBUG 0' to silence raw Modbus TX/RX hex dumps, 'DEBUG 1' to re-enable\r\n");
   /* USER CODE END 2 */
@@ -607,10 +618,17 @@ static void LogDataPoint(void) {
     strcpy(currentField, "NA");
   }
 
+  float freqChange = freqHz - prevFreqHz;
+  if (freqChange < 0.0f) {
+    freqChange = -freqChange;
+  }
+  bool steady = freqHz > STEADY_MIN_FREQ_HZ && freqChange <= STEADY_FREQ_TOL_HZ;
+  prevFreqHz = freqHz;
+
   char line[160];
-  snprintf(line, sizeof(line), "%lu,%.2f,%s,%.1f,%s,%s,%s,%s,%.3f\r\n",
+  snprintf(line, sizeof(line), "%lu,%.2f,%s,%.1f,%s,%s,%s,%s,%.3f,0,%d\r\n",
            (unsigned long)HAL_GetTick(), freqHz, freqSource, syncRpm, rpmField,
-           slipField, currentField, currentSource, knownLoadKg);
+           slipField, currentField, currentSource, knownLoadKg, steady ? 1 : 0);
   UartPrint(line);
 
   if (hmiMode == HMI_IDLE) {

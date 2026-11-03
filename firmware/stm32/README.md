@@ -27,7 +27,7 @@ Modbus RTU logic is written directly into it, not a separate module.
 ## Verifying it works
 
 Open a serial terminal to the Nucleo's ST-LINK VCP port at **115200 baud**. You
-should see the CSV header lines, then a new row every 2 seconds. Typing
+should see the CSV header lines, then a new row every 250 ms. Typing
 `FREQ 10`, `RPM 1650`, `CURRENT 1.2`, or `LOAD 0.5` (Enter after each) updates that
 field — check for `manual` in the `freq_source`/`current_source` columns to confirm
 the command was received.
