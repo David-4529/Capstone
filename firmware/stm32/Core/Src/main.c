@@ -38,16 +38,43 @@
 #define VFD_SLAVE_ID 1          // must match the VFD's P09.00 - check in GSoft2
 #define REG_OUTPUT_FREQUENCY 0x2103
 #define REG_OUTPUT_CURRENT 0x2104
+#define REG_FREQ_COMMAND 0x2102 // frequency setpoint the drive is following (= pot position when P00.20 = 2)
+// Parameter Pxx.yy lives at Modbus address 0xXXYY with xx/yy converted to hex (GS20 manual ch. 5)
+#define PARAM_ADDR(group, num) ((uint16_t)(((group) << 8) | (num)))
+#define REG_P00_20_FREQ_SOURCE PARAM_ADDR(0, 20)
+#define REG_P00_21_RUN_SOURCE PARAM_ADDR(0, 21)
+#define REG_P03_00_AI1_FUNCTION PARAM_ADDR(3, 0)
+#define REG_P00_22_STOP_METHOD PARAM_ADDR(0, 22)
+#define REG_P01_10_FREQ_UPPER_LIMIT PARAM_ADDR(1, 10)
+#define REG_P01_12_ACCEL_TIME PARAM_ADDR(1, 12)
+#define REG_P01_13_DECEL_TIME PARAM_ADDR(1, 13)
+#define EXPECTED_FREQ_SOURCE 2 // P00.20 = 2: external analog input (pot on +10V/AI1/ACM)
+#define EXPECTED_RUN_SOURCE 1  // P00.21 = 1: external terminals (FWD/REV pushbuttons)
+#define EXPECTED_AI1_FUNCTION 1 // P03.00 = 1: AI1 is the frequency command
+#define EXPECTED_STOP_METHOD 0  // P00.22 = 0: ramp to stop
+// Highest frequency the cable travel can safely handle right now. VFDCHECK fails if
+// P01.10 is set above this, and the CSV log warns if output frequency exceeds it.
+// Raise it (together with P01.10) only after each step has been run safely.
+#define SAFE_MAX_FREQ_HZ 10.0f
 #define MOTOR_POLE_COUNT 4
-// 250 ms so a short run still logs plenty of rows for the PC logger's steady-state
-// averaging; matches the actual rate seen in every real session log (~204-250 ms
-// between rows), not the 2000 ms this was previously set to.
+// 250 ms so a run of only a few seconds (64 in of cable travel) still logs plenty of
+// rows. Each row's 3 Modbus reads take ~75 ms at 9600 baud.
 #define LOG_INTERVAL_MS 250
-// A row counts as steady when output frequency is above this and moved no more than
-// STEADY_FREQ_TOL_HZ since the previous row (i.e. not ramping). Consumed by the PC
-// logger (tools/logger/vfd_logger.py) to pick out each run's settled plateau.
+// A row counts as steady when output frequency is above this and moved no more
+// than STEADY_FREQ_TOL_HZ since the previous row (i.e. not ramping).
 #define STEADY_MIN_FREQ_HZ 0.5f
 #define STEADY_FREQ_TOL_HZ 0.05f
+// Test averages use only the highest steady speed held during the test. Steady rows
+// more than this below it (pauses while turning the pot up, slowing down) are skipped.
+#define PLATEAU_TOL_HZ 0.2f
+// Nucleo's green user LED LD2 (PA5): a status light that works with no serial link.
+// Slow blink (1 s) = running and the VFD is answering Modbus.
+// Fast blink (0.1 s) = running but the VFD is not answering (check RS-485 wiring).
+// Solid on = stopped in Error_Handler. Off = not running at all.
+#define STATUS_LED_PORT GPIOA
+#define STATUS_LED_PIN GPIO_PIN_5
+#define LED_BLINK_OK_MS 1000
+#define LED_BLINK_FAIL_MS 100
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -75,7 +102,29 @@ static char lineBuf[64];
 static volatile uint8_t lineLen = 0;
 static volatile bool lineReady = false;
 
-static float prevFreqHz = 0.0f; // previous LogDataPoint() reading, for the steady-row check below
+// Latest readings, for watching in the debugger's Live Expressions view.
+volatile float liveFreqHz = 0.0f;
+volatile float liveCurrentA = 0.0f;
+volatile float livePotSetpointHz = 0.0f;
+volatile uint32_t liveModbusOkCount = 0;
+volatile uint32_t liveModbusFailCount = 0;
+static volatile bool lastModbusOk = false;
+
+// Test sessions: TEST asks for the weight and starts a numbered test, STOP ends it and
+// prints a summary. Rows logged during a test carry its test_id (0 = no test running).
+static uint16_t testId = 0;
+static bool testActive = false;
+static bool awaitingWeight = false;
+static uint32_t testRows = 0;
+// Steady-state averages only count rows where the motor was running at a constant
+// speed (see STEADY_*). RPM can be typed any time before STOP - even after the motor
+// has stopped - and the summary slip uses it with the steady-state average speed.
+static uint32_t testSteadyRows = 0;
+static float sumFreqHz = 0.0f;
+static float sumCurrentA = 0.0f;
+static float sumSyncRpm = 0.0f;
+static float prevFreqHz = 0.0f;
+static uint32_t lastLedToggleMs = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -89,6 +138,9 @@ static bool ModbusReadHoldingRegister(uint16_t regAddr, uint16_t *value);
 static void UartPrint(const char *s);
 static void HandleLine(const char *line);
 static void LogDataPoint(void);
+static void CheckVfdPotControl(void);
+static void StartTest(float loadKg);
+static void EndTest(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -130,13 +182,23 @@ int main(void)
   /* USER CODE BEGIN 2 */
   HAL_GPIO_WritePin(RS485_DE_RE_GPIO_Port, RS485_DE_RE_Pin, GPIO_PIN_RESET); // start in receive mode
 
+  GPIO_InitTypeDef ledInit = {0};
+  ledInit.Pin = STATUS_LED_PIN;
+  ledInit.Mode = GPIO_MODE_OUTPUT_PP;
+  ledInit.Pull = GPIO_NOPULL;
+  ledInit.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(STATUS_LED_PORT, &ledInit);
+  HAL_GPIO_WritePin(STATUS_LED_PORT, STATUS_LED_PIN, GPIO_PIN_SET); // on during the startup check
+
   HAL_UART_Receive_IT(&huart2, &rxByte, 1);
 
   UartPrint("# millis,freq_hz,freq_source,sync_rpm,actual_rpm,slip,current_a,current_source,known_load_kg,test_id,steady\r\n");
-  UartPrint("# test_id is always 0 - no TEST/STOP session tracking on this build; the PC logger\r\n");
-  UartPrint("# (tools/logger/vfd_logger.py) segments runs from freq_hz and steady on its own.\r\n");
   UartPrint("# send 'LOAD <kg>' 'RPM <value>' 'FREQ <hz>' 'CURRENT <amps>' over serial\r\n");
   UartPrint("# send 'DEBUG 0' to silence raw Modbus TX/RX hex dumps, 'DEBUG 1' to re-enable\r\n");
+  UartPrint("# send 'VFDCHECK' to re-check that the drive is set up for pot speed control\r\n");
+
+  CheckVfdPotControl();
+  UartPrint("# type TEST to start a test (it asks for the weight), STOP to end it\r\n");
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -153,6 +215,12 @@ int main(void)
     if (now - lastLogMs >= LOG_INTERVAL_MS) {
       lastLogMs = now;
       LogDataPoint();
+    }
+
+    now = HAL_GetTick();
+    if (now - lastLedToggleMs >= (lastModbusOk ? LED_BLINK_OK_MS : LED_BLINK_FAIL_MS)) {
+      lastLedToggleMs = now;
+      HAL_GPIO_TogglePin(STATUS_LED_PORT, STATUS_LED_PIN);
     }
     /* USER CODE END WHILE */
 
@@ -281,8 +349,6 @@ static void MX_GPIO_Init(void)
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOA_CLK_ENABLE();
-  __HAL_RCC_GPIOB_CLK_ENABLE();
-  __HAL_RCC_GPIOC_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(RS485_DE_RE_GPIO_Port, RS485_DE_RE_Pin, GPIO_PIN_RESET);
@@ -325,8 +391,9 @@ static uint16_t ModbusCrc16(const uint8_t *buf, uint16_t len) {
   return crc;
 }
 
-// Set to false once the RS-485 link is confirmed working, to quiet the log.
-static bool modbusDebug = true;
+// Raw TX/RX hex dumps. Off by default now that the RS-485 link is confirmed working;
+// send 'DEBUG 1' over the serial port to turn them back on.
+static bool modbusDebug = false;
 
 static void UartPrintHexBytes(const char *label, const uint8_t *buf, uint16_t len) {
   char line[96];
@@ -366,6 +433,8 @@ static bool ModbusReadHoldingRegister(uint16_t regAddr, uint16_t *value) {
     if (modbusDebug) {
       UartPrint("#   FAIL: HAL_UART_Transmit did not return HAL_OK\r\n");
     }
+    liveModbusFailCount++;
+    lastModbusOk = false;
     return false;
   }
 
@@ -375,6 +444,8 @@ static bool ModbusReadHoldingRegister(uint16_t regAddr, uint16_t *value) {
     if (modbusDebug) {
       UartPrint("#   FAIL: no response within 200ms (check A/B wiring, baud, slave ID)\r\n");
     }
+    liveModbusFailCount++;
+    lastModbusOk = false;
     return false; // timeout - check wiring (A/B swapped?), baud, or slave ID
   }
 
@@ -386,6 +457,8 @@ static bool ModbusReadHoldingRegister(uint16_t regAddr, uint16_t *value) {
     if (modbusDebug) {
       UartPrint("#   FAIL: unexpected slave ID / function code / byte count (exception response?)\r\n");
     }
+    liveModbusFailCount++;
+    lastModbusOk = false;
     return false; // wrong slave ID, exception response, or unexpected byte count
   }
 
@@ -395,10 +468,14 @@ static bool ModbusReadHoldingRegister(uint16_t regAddr, uint16_t *value) {
     if (modbusDebug) {
       UartPrint("#   FAIL: CRC mismatch (check 8N2 vs 8N1 framing)\r\n");
     }
+    liveModbusFailCount++;
+    lastModbusOk = false;
     return false; // CRC mismatch - usually a framing mismatch (check 8N2 vs 8N1)
   }
 
   *value = ((uint16_t)response[3] << 8) | response[4];
+  liveModbusOkCount++;
+  lastModbusOk = true;
   if (modbusDebug) {
     char ok[48];
     snprintf(ok, sizeof(ok), "#   OK: raw value = %u\r\n", *value);
@@ -407,8 +484,15 @@ static bool ModbusReadHoldingRegister(uint16_t regAddr, uint16_t *value) {
   return true;
 }
 
+// Every message goes to both the ST-LINK virtual COM port (PuTTY/Tera Term) and the
+// debugger's SWV ITM Data Console in STM32CubeIDE (via the SWO pin, PB3), so live
+// data can be watched in the IDE with no serial terminal. ITM output is skipped
+// unless a debugger has SWV tracing enabled.
 static void UartPrint(const char *s) {
   HAL_UART_Transmit(&huart2, (uint8_t *)s, strlen(s), 100);
+  for (const char *c = s; *c != '\0'; c++) {
+    ITM_SendChar((uint32_t)*c);
+  }
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
@@ -427,8 +511,44 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 
 static void HandleLine(const char *line) {
   float value;
-  char msg[48];
-  if (sscanf(line, "LOAD %f", &value) == 1) {
+  char msg[112];
+  if (awaitingWeight) {
+    if (strcmp(line, "CANCEL") == 0) {
+      awaitingWeight = false;
+      UartPrint("# test cancelled\r\n");
+    } else if (sscanf(line, "%f", &value) == 1 && value >= 0.0f) {
+      awaitingWeight = false;
+      StartTest(value);
+    } else {
+      UartPrint("# enter the weight in kg as a number (e.g. 2.5, or 0 for no load), or CANCEL\r\n");
+    }
+    return;
+  }
+
+  if (strcmp(line, "TEST") == 0) {
+    if (testActive) {
+      snprintf(msg, sizeof(msg), "# test %u is still running - type STOP first\r\n", testId);
+      UartPrint(msg);
+    } else {
+      awaitingWeight = true;
+      UartPrint("# TEST: what weight are you using? Enter it in kg (0 for no load):\r\n");
+    }
+  } else if (sscanf(line, "START %f", &value) == 1) {
+    if (testActive) {
+      snprintf(msg, sizeof(msg), "# test %u is still running - type STOP first\r\n", testId);
+      UartPrint(msg);
+    } else {
+      StartTest(value);
+    }
+  } else if (strcmp(line, "STOP") == 0) {
+    if (testActive) {
+      EndTest();
+    } else {
+      UartPrint("# no test running - type TEST to start one\r\n");
+    }
+  } else if (strcmp(line, "VFDCHECK") == 0) {
+    CheckVfdPotControl();
+  } else if (sscanf(line, "LOAD %f", &value) == 1) {
     knownLoadKg = value;
     snprintf(msg, sizeof(msg), "# known load set to %.3f kg\r\n", knownLoadKg);
     UartPrint(msg);
@@ -451,7 +571,61 @@ static void HandleLine(const char *line) {
     modbusDebug = (value != 0.0f);
     snprintf(msg, sizeof(msg), "# modbus debug logging %s\r\n", modbusDebug ? "ON" : "OFF");
     UartPrint(msg);
+  } else {
+    snprintf(msg, sizeof(msg), "# unknown command: '%s'\r\n", line);
+    UartPrint(msg);
   }
+}
+
+static void StartTest(float loadKg) {
+  char msg[96];
+  testId++;
+  testActive = true;
+  knownLoadKg = loadKg;
+  haveManualRpm = false; // force a fresh RPM reading for this test
+  testRows = 0;
+  testSteadyRows = 0;
+  sumFreqHz = 0.0f;
+  sumCurrentA = 0.0f;
+  sumSyncRpm = 0.0f;
+  snprintf(msg, sizeof(msg), "# TEST %u START load_kg=%.3f\r\n", testId, knownLoadKg);
+  UartPrint(msg);
+  UartPrint("# hold UP at a steady speed, read the RPM on the SERVO display, release before\r\n");
+  UartPrint("# the cable runs out, then type RPM <value> and STOP.\r\n");
+}
+
+static void EndTest(void) {
+  char msg[200];
+  char freqField[12] = "NA";
+  char currentField[12] = "NA";
+  char rpmField[12] = "NA";
+  char slipField[12] = "NA";
+  testActive = false;
+  if (testSteadyRows > 0) {
+    float n = (float)testSteadyRows;
+    float avgSync = sumSyncRpm / n;
+    snprintf(freqField, sizeof(freqField), "%.2f", sumFreqHz / n);
+    snprintf(currentField, sizeof(currentField), "%.3f", sumCurrentA / n);
+    if (haveManualRpm && avgSync > 0.0f) {
+      snprintf(slipField, sizeof(slipField), "%.4f", (avgSync - manualActualRpm) / avgSync);
+    }
+  }
+  if (haveManualRpm) {
+    snprintf(rpmField, sizeof(rpmField), "%.1f", manualActualRpm);
+  }
+  snprintf(msg, sizeof(msg),
+           "# TEST %u END load_kg=%.3f rows=%lu steady_rows=%lu avg_freq_hz=%s avg_current_a=%s avg_rpm=%s avg_slip=%s\r\n",
+           testId, knownLoadKg, (unsigned long)testRows, (unsigned long)testSteadyRows,
+           freqField, currentField, rpmField, slipField);
+  UartPrint(msg);
+  if (testSteadyRows == 0) {
+    UartPrint("# WARNING: no steady rows - the motor never held a constant speed during this test\r\n");
+  }
+  if (!haveManualRpm) {
+    UartPrint("# WARNING: no RPM entered - slip not calculated (type RPM <value> before STOP)\r\n");
+  }
+  haveManualRpm = false; // don't carry this test's RPM into idle rows or the next test
+  UartPrint("# type TEST to start the next test\r\n");
 }
 
 static void LogDataPoint(void) {
@@ -469,6 +643,15 @@ static void LogDataPoint(void) {
     return;
   }
 
+  liveFreqHz = freqHz;
+  if (ModbusReadHoldingRegister(REG_FREQ_COMMAND, &raw)) {
+    livePotSetpointHz = raw / 100.0f;
+  }
+
+  if (freqHz > SAFE_MAX_FREQ_HZ + 0.5f) {
+    UartPrint("# WARNING: output frequency above SAFE_MAX_FREQ_HZ - release FWD and check P01.10\r\n");
+  }
+
   float syncRpm = 120.0f * freqHz / MOTOR_POLE_COUNT;
 
   bool haveRpm = haveManualRpm;
@@ -478,7 +661,7 @@ static void LogDataPoint(void) {
     slip = (syncRpm - actualRpm) / syncRpm;
   }
 
-  float currentA;
+  float currentA = 0.0f;
   const char *currentSource;
   bool haveCurrent;
   if (ModbusReadHoldingRegister(REG_OUTPUT_CURRENT, &raw)) {
@@ -492,6 +675,9 @@ static void LogDataPoint(void) {
   } else {
     currentSource = "NA";
     haveCurrent = false;
+  }
+  if (haveCurrent) {
+    liveCurrentA = currentA;
   }
 
   char rpmField[16];
@@ -517,11 +703,122 @@ static void LogDataPoint(void) {
   bool steady = freqHz > STEADY_MIN_FREQ_HZ && freqChange <= STEADY_FREQ_TOL_HZ;
   prevFreqHz = freqHz;
 
+  if (testActive) {
+    testRows++;
+    if (steady && haveCurrent) {
+      float plateauHz = testSteadyRows > 0 ? sumFreqHz / testSteadyRows : 0.0f;
+      if (testSteadyRows > 0 && freqHz > plateauHz + PLATEAU_TOL_HZ) {
+        // reached a higher steady speed - restart the averages there
+        testSteadyRows = 0;
+        sumFreqHz = 0.0f;
+        sumCurrentA = 0.0f;
+        sumSyncRpm = 0.0f;
+      }
+      if (testSteadyRows == 0 || freqHz >= plateauHz - PLATEAU_TOL_HZ) {
+        testSteadyRows++;
+        sumFreqHz += freqHz;
+        sumCurrentA += currentA;
+        sumSyncRpm += syncRpm;
+      }
+    }
+  }
+
   char line[160];
-  snprintf(line, sizeof(line), "%lu,%.2f,%s,%.1f,%s,%s,%s,%s,%.3f,0,%d\r\n",
+  snprintf(line, sizeof(line), "%lu,%.2f,%s,%.1f,%s,%s,%s,%s,%.3f,%u,%d\r\n",
            (unsigned long)HAL_GetTick(), freqHz, freqSource, syncRpm, rpmField,
-           slipField, currentField, currentSource, knownLoadKg, steady ? 1 : 0);
+           slipField, currentField, currentSource, knownLoadKg,
+           (unsigned)(testActive ? testId : 0), steady ? 1 : 0);
   UartPrint(line);
+}
+
+// Read-only check that the drive takes its speed from the pot, its run command from
+// the FWD/REV pushbuttons, and that the speed cap/ramps are in place. This firmware
+// never writes to the drive - it only reports, so any setting flagged here must be
+// changed in GSoft2.
+static uint8_t vfdReadsTried;
+static uint8_t vfdReadsOk;
+
+static bool ReadVfdRegister(uint16_t regAddr, uint16_t *value) {
+  vfdReadsTried++;
+  if (!ModbusReadHoldingRegister(regAddr, value)) {
+    return false;
+  }
+  vfdReadsOk++;
+  return true;
+}
+
+static bool CheckVfdParam(const char *name, uint16_t regAddr, uint16_t expected, const char *meaning) {
+  uint16_t value;
+  char msg[128];
+  if (!ReadVfdRegister(regAddr, &value)) {
+    snprintf(msg, sizeof(msg), "# VFDCHECK %s: could not read (check RS-485 link)\r\n", name);
+    UartPrint(msg);
+    return false;
+  }
+  if (value == expected) {
+    snprintf(msg, sizeof(msg), "# VFDCHECK %s = %u OK (%s)\r\n", name, value, meaning);
+    UartPrint(msg);
+    return true;
+  }
+  snprintf(msg, sizeof(msg), "# VFDCHECK %s = %u WRONG - set it to %u in GSoft2 (%s)\r\n",
+           name, value, expected, meaning);
+  UartPrint(msg);
+  return false;
+}
+
+// Accel/decel times assume the drive's default 0.01 s time unit (P01.45 = 0). If the
+// printed seconds are 10x off from GSoft2, the unit is 0.1 s - compare the raw value.
+static bool PrintVfdTime(const char *name, uint16_t regAddr) {
+  uint16_t raw;
+  char msg[96];
+  if (!ReadVfdRegister(regAddr, &raw)) {
+    snprintf(msg, sizeof(msg), "# VFDCHECK %s: could not read (check RS-485 link)\r\n", name);
+    UartPrint(msg);
+    return false;
+  }
+  snprintf(msg, sizeof(msg), "# VFDCHECK %s = %.2f s (raw %u)\r\n", name, raw / 100.0f, raw);
+  UartPrint(msg);
+  return true;
+}
+
+static void CheckVfdPotControl(void) {
+  UartPrint("# VFDCHECK: verifying drive is set up for potentiometer speed control...\r\n");
+  vfdReadsTried = 0;
+  vfdReadsOk = 0;
+  bool ok = true;
+  ok &= CheckVfdParam("P00.20 freq source", REG_P00_20_FREQ_SOURCE, EXPECTED_FREQ_SOURCE,
+                      "speed from pot on AI1");
+  ok &= CheckVfdParam("P00.21 run source", REG_P00_21_RUN_SOURCE, EXPECTED_RUN_SOURCE,
+                      "start/stop from FWD/REV buttons");
+  ok &= CheckVfdParam("P03.00 AI1 function", REG_P03_00_AI1_FUNCTION, EXPECTED_AI1_FUNCTION,
+                      "AI1 = frequency command");
+  ok &= CheckVfdParam("P00.22 stop method", REG_P00_22_STOP_METHOD, EXPECTED_STOP_METHOD,
+                      "ramp to stop");
+
+  uint16_t raw;
+  char msg[112];
+  if (ReadVfdRegister(REG_P01_10_FREQ_UPPER_LIMIT, &raw)) {
+    float limitHz = raw / 100.0f;
+    bool limitOk = limitHz > 0.0f && limitHz <= SAFE_MAX_FREQ_HZ;
+    snprintf(msg, sizeof(msg), "# VFDCHECK P01.10 freq upper limit = %.2f Hz %s (safe max %.2f Hz)\r\n",
+             limitHz, limitOk ? "OK" : "TOO HIGH", SAFE_MAX_FREQ_HZ);
+    UartPrint(msg);
+    ok &= limitOk;
+  } else {
+    UartPrint("# VFDCHECK P01.10 freq upper limit: could not read (check RS-485 link)\r\n");
+    ok = false;
+  }
+  ok &= PrintVfdTime("P01.12 accel time", REG_P01_12_ACCEL_TIME);
+  ok &= PrintVfdTime("P01.13 decel time", REG_P01_13_DECEL_TIME);
+
+  if (ReadVfdRegister(REG_FREQ_COMMAND, &raw)) {
+    snprintf(msg, sizeof(msg), "# VFDCHECK frequency command (pot setpoint) = %.2f Hz\r\n", raw / 100.0f);
+    UartPrint(msg);
+  }
+  snprintf(msg, sizeof(msg), "# VFDCHECK modbus link: %u/%u reads OK\r\n", vfdReadsOk, vfdReadsTried);
+  UartPrint(msg);
+  UartPrint(ok ? "# VFDCHECK: PASS - turn the pot to set speed, FWD/REV to run\r\n"
+               : "# VFDCHECK: FAIL - fix the settings above (see docs/vfd-parameters.md)\r\n");
 }
 /* USER CODE END 4 */
 
@@ -533,6 +830,7 @@ void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
+  HAL_GPIO_WritePin(STATUS_LED_PORT, STATUS_LED_PIN, GPIO_PIN_SET); // solid on = stuck here
   __disable_irq();
   while (1)
   {
