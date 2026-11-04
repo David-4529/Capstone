@@ -5,14 +5,13 @@ Two independent wiring systems on this rig:
 1. **VFD control station wiring** — the 9-pair control cable running pushbuttons and a
    speed pot into the DURApulse GS23-21P0's control terminal block. **Confirmed,
    already landed on the rig.**
-2. **ESP32 data-acquisition wiring** — new for this project: ESP32 dev board, RS-485
+2. **STM32 data-acquisition wiring** — new for this project: STM32 Nucleo-F401RE, RS-485
    transceiver module, and (once resolved) the SERVO system's RPM signal. Termination
    style is **Dupont / pin headers** throughout (per project decision — see
    `docs/open-items.md` if that changes).
 
-AC/mains wiring color convention (3-phase input to the VFD) is **TBD** pending user
-input — see `docs/open-items.md`, item 6. Everything below that isn't AC/mains does not
-depend on that choice and is documented now.
+AC/mains wiring color convention (3-phase input to the VFD) is **CONFIRMED** — see
+section 1b below.
 
 ---
 
@@ -73,63 +72,76 @@ spares above — they're on separate terminals.
 
 ---
 
-## 2. Data-Acquisition Wiring — Dupont / pin headers
+## 1b. AC/Mains Power Wiring — CONFIRMED
 
-⚠ **Controller change pending:** the project has moved from an ESP32 to an
-**STM32 Nucleo-F401RE** (STM32CubeIDE, bare HAL/LL — no Arduino framework). Sections
-2.1 and 2.2 below still reference ESP32 GPIO numbers and haven't been rewritten for the
-Nucleo's pinout yet — treat those two as stale until updated. Section 2.3 (RS-485 ↔ VFD)
-is MCU-agnostic and is now confirmed, not TBD.
+Incoming 3-phase power and the motor leads, landed and confirmed working.
 
+| From | Wire color | To (VFD terminal) |
+|---|---|---|
+| Incoming 3-phase, phase R | Black | R/L1 |
+| Incoming 3-phase, phase S | Grey | S/L2 |
+| Incoming 3-phase, phase T | Brown | T/L3 |
+
+| VFD output | Wire color | To (motor terminal) |
+|---|---|---|
+| U/T1 | Black | U2 |
+| V/T2 | Grey | V2 |
+| W/T3 | Brown | W2 |
+
+Each phase keeps the same wire color from the VFD's input side through to the motor's
+output side (black/grey/brown throughout). The motor is landed on its **U2/V2/W2**
+terminals specifically, not U1/V1/W1 — this motor's terminal board exposes both halves of
+each winding (U1/U2, V1/V2, W1/W2) so it can be reconfigured between its 208V delta and
+360V wye ratings (see the nameplate table, Table I); U2/V2/W2 is the set wired for this
+project's 208V delta configuration, matching P01.02 (MAX Out-VOLT 1 = 208.0V, confirmed
+in `docs/vfd-parameters.md`).
+
+Equipment ground/PE is bonded from both the incoming supply and the motor frame
+(unchanged from the general safety note above).
+
+---
+
+## 2. Data-Acquisition Wiring — STM32 Nucleo-F401RE
+
+Controller is the **STM32 Nucleo-F401RE** (STM32CubeIDE, bare HAL/LL — no Arduino
+framework; the earlier ESP32 plan was superseded, see `docs/open-items.md` item 7).
 This is new wiring for the logging node, independent of the control cable above.
-Dupont jumper kits ship with arbitrary rainbow colors that carry no inherent meaning, so
-the colors below are a **functional convention this project is adopting** — if your kit's
-actual wire colors differ, sleeve or flag both ends with tape/heat-shrink labeled per the
-"Signal" column so the mapping in this table stays trustworthy.
 
 ### 2.1 Power
 
-| From | To | Color (convention) | Notes |
+| From | To | Notes |
+|---|---|---|
+| STM32 `3.3V` pin | MAX485 `VCC` | Do not power the module from 5V — see electrical note below |
+| STM32 `GND` | MAX485 `GND` | |
+| STM32 `GND` | VFD control common (DCM/ACM ground reference) | Single-point ground reference; see §4 |
+
+**⚠ Electrical note — 3.3V vs 5V:** the Nucleo's GPIOs are **3.3V logic and not
+5V-tolerant**. Many generic "MAX485 module" breakouts are built around a plain MAX485
+chip that expects a 5V supply, and if powered at 5V its `RO` (receiver output) pin would
+drive the STM32's RX pin at 5V logic levels — this can damage the MCU over time. Confirm
+the module is 3.3V-tolerant (or add a logic-level shifter) before wiring; this project's
+module has been run successfully at 3.3V.
+
+### 2.2 STM32 ↔ MAX485 transceiver module — CONFIRMED, landed
+
+| STM32 pin | Board label | Module pin | Function |
 |---|---|---|---|
-| ESP32 `3V3` pin | RS-485 module `VCC` | Red | See electrical note below — do not power the module from 5V |
-| ESP32 `GND` | RS-485 module `GND` | Black | |
-| ESP32 `GND` | VFD control common (DCM/ACM ground reference) | Black | Single-point ground reference; see §4 |
+| PA10 (USART1_RX) | D2 | `RO` | Data from VFD → STM32 |
+| PA9 (USART1_TX) | D8 | `DI` | Data from STM32 → VFD |
+| PA8 (GPIO output) | D7 | `DE` **and** `RE` tied together | Half-duplex direction control (driven HIGH to transmit, LOW to receive) |
+| 3.3V | — | `VCC` | See electrical note above |
+| GND | — | `GND` | |
 
-**⚠ Electrical note — 3.3V vs 5V:** ESP32 GPIOs are **3.3V logic and not 5V-tolerant**.
-Many generic "MAX485 module" breakout boards are built around a plain MAX485 chip that
-expects a 5V supply, and if powered at 5V its `RO` (receiver output) pin would drive the
-ESP32's RX pin at 5V logic levels — this can damage the ESP32 over time. Before wiring:
-verify the specific module either (a) is built around a 3.3V-tolerant transceiver (e.g.
-MAX3485/SP3485-based), or (b) is confirmed by its datasheet to run correctly off a 3.3V
-supply with 3.3V logic thresholds. If neither is true, add a bidirectional logic-level
-shifter between the ESP32 UART pins and the module's `RO`/`DI` pins rather than powering
-the module directly from `3V3`.
+### 2.3 MAX485 transceiver module ↔ VFD — CONFIRMED, landed
 
-### 2.2 ESP32 ↔ RS-485 transceiver module (e.g. MAX485 breakout)
+This drive exposes RS-485 two ways that share the same signals — a front/side **RJ45
+jack**, and terminal-block `SG+`/`SG-` screw terminals. This project uses the RJ45 jack.
 
-Uses ESP32 hardware UART2 so UART0 stays free for USB/Serial Monitor logging.
-
-| ESP32 pin | Module pin | Color (convention) | Function |
+| VFD cable | Signal | MAX485 pin | Notes |
 |---|---|---|---|
-| GPIO16 (RX2) | `RO` | Yellow | Data from VFD → ESP32 |
-| GPIO17 (TX2) | `DI` | Orange | Data from ESP32 → VFD |
-| GPIO4 | `DE` **and** `RE` tied together | Green | Half-duplex direction control (driven HIGH to transmit, LOW to receive) |
-| `3V3` | `VCC` | Red | See electrical note above |
-| `GND` | `GND` | Black | |
-
-### 2.3 RS-485 transceiver module ↔ VFD — CONFIRMED
-
-Resolved via the GS20/GS20X manual's Chapter 5 register/pinout tables (cross-checked
-against two independent sources). This drive exposes RS-485 two ways that share the same
-signals — a front/side **RJ45 jack**, and terminal-block `SG+`/`SG-` screw terminals:
-
-| RJ45 pin | Signal | Module pin | Color (convention) | Notes |
-|---|---|---|---|---|
-| 5 | SG+ (RS-485 A) | `A` / `Y` | White | Twisted pair with B/Z line below |
-| 4 | SG- (RS-485 B) | `B` / `Z` | Blue | |
-| 3 or 7 | SGND (common) | `GND` | Black | Single-point ground reference — don't also tie to earth ground at both ends (ground loop) |
-| 1, 2, 6 | Reserved | — | — | Leave unconnected |
-| 8 | +10V (optional accessory keypad power) | — | — | **Do not connect** — this is power for a different accessory, not a signal; connecting it to the transceiver module or MCU could apply unwanted voltage |
+| Blue | RS-485 B | `B` | |
+| White/Blue | RS-485 A | `A` | Twisted pair with the Blue (B) line |
+| White/Green | SGND (common) | `GND` | Single-point ground reference — don't also tie to earth ground at both ends (ground loop) |
 
 If using the RJ45 jack, a cheap RJ45-to-screw-terminal breakout is the simplest way to
 land pins 4/5/3 onto the module without crimping a custom connector. Standard Ethernet
@@ -148,21 +160,21 @@ to match (8 data bits, no parity, 2 stop bits), not 8N1.
 **TBD** — see `docs/open-items.md`, item 4. Interface type not yet confirmed. Candidate
 wiring, to be finalized once the interface is known:
 
-| If the SERVO system outputs... | ESP32 side | Color (convention) | Notes |
+| If the SERVO system outputs... | STM32 side | Color (convention) | Notes |
 |---|---|---|---|
-| Analog tachometer voltage (e.g. 0–10V) | Voltage divider into an ADC-capable GPIO (e.g. GPIO34) | White (signal), Black (return) | ESP32 ADC pins max ~3.3V — a divider or scaling op-amp is required, do not feed 0–10V directly |
+| Analog tachometer voltage (e.g. 0–10V) | Voltage divider into an ADC-capable GPIO | White (signal), Black (return) | STM32 ADC pins max ~3.3V — a divider or scaling op-amp is required, do not feed 0–10V directly |
 | Digital pulse / encoder output | GPIO interrupt pin (e.g. GPIO27) | White (signal), Black (return) | Check output logic level; if 5V/12V TTL, level-shift or opto-isolate before the GPIO |
 | Serial (RS-232/RS-485/USB) | Second UART or a second RS-485 channel | per §2.2 convention | Would reuse the same electrical-note caution as §2.1 if RS-485 |
 
 Whichever it turns out to be, favor opto-isolation between the SERVO system and the
-ESP32 if practical — it sits electrically close to the motor/drive and isolation limits
+the STM32 if practical — it sits electrically close to the motor/drive and isolation limits
 noise coupling into the logging electronics.
 
 ### 2.5 Load reference (QWORK crane scale)
 
 **No wiring.** Treated as a standalone display with manual data entry — see
 `docs/open-items.md`, item 5. The known/applied test weight is typed over USB serial
-(ESP32's native UART0/USB connection to the logging PC) before each test point; see
+(the STM32's ST-LINK virtual COM port connection to the logging PC) before each test point; see
 `handleSerialCommands()` in `firmware/src/main.cpp`.
 
 ---
@@ -177,9 +189,9 @@ noise coupling into the logging electronics.
 | Preset-speed select (future) | VFD control cable (White/Black pair → DI3) | Pulled, not landed |
 | Stop pushbutton (future) | VFD control cable (Blue/Black pair → DI4) | Pulled, not landed |
 | Spare digital input | VFD control cable (Green/Black pair → DI5) | Pulled, not landed |
-| ESP32 dev board | USB to logging PC (power + serial) | New, this project |
-| RS-485 transceiver module | Dupont jumpers to ESP32 UART2 | New, this project |
-| VFD Modbus RTU (frequency/current) | RS-485 transceiver ↔ VFD control terminal block | Wiring TBD (item 3), protocol confirmed |
+| STM32 Nucleo-F401RE | USB (ST-LINK VCP) to logging PC (power + serial) | New, this project |
+| RS-485 transceiver module (MAX485) | STM32 USART1 (PA8/PA9/PA10) | Landed, confirmed |
+| VFD Modbus RTU (frequency/current) | RS-485 transceiver ↔ VFD RJ45 jack | Landed, confirmed |
 | Lucas Nülle SERVO system (shaft RPM) | TBD | Open item 4 |
 | QWORK crane scale (load) | Manual entry, no wiring | Open item 5 |
 
@@ -191,7 +203,7 @@ noise coupling into the logging electronics.
   (motor cable) — VFD output switching is a strong EMI source. Cross power cables at 90°
   only if a crossing is unavoidable; don't run signal and motor-power cable in parallel
   runs.
-- Use a single-point ground reference between ESP32 `GND`, the RS-485 module `GND`, and
+- Use a single-point ground reference between the STM32's `GND`, the RS-485 module `GND`, and
   the VFD's control common — avoid creating a second ground path elsewhere that could
   form a ground loop.
 - The control station cable (§1) and the RS-485/data wiring (§2) should be run as

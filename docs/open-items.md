@@ -47,10 +47,10 @@ load is typed over USB serial before each test point (see `firmware/src/main.cpp
 `handleSerialCommands()`). If automatic logging is wanted later, this specific scale
 would need to be replaced with one that has a serial/Bluetooth output.
 
-## 6. AC/mains wiring color convention
-User has not yet specified US/NEC vs. IEC color coding for the VFD's 3-phase input
-wiring. `docs/wiring.md` marks all AC/mains conductor colors `TBD` pending that input;
-everything else in the wiring doc (MAX485/sensor low-voltage side) is documented now
+## 6. AC/mains wiring color convention — RESOLVED
+Confirmed: R/L1=black, S/L2=grey, T/L3=brown on the incoming 3-phase side, carried
+through to U2/V2/W2 on the motor side. Documented in `docs/wiring.md` section 1b.
+Everything else in the wiring doc (MAX485/sensor low-voltage side) is documented too
 since it doesn't depend on that choice.
 
 ## 7. Controller changed from ESP32 to STM32 Nucleo-F401RE — RESOLVED
