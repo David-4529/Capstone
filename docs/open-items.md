@@ -59,9 +59,27 @@ HAL/LL C (no Arduino framework). Firmware is written (`firmware/stm32/Core/Src/m
 self-contained, no separate Modbus library needed) and **confirmed working end-to-end
 on real hardware**: RS-485 wired to the VFD via the MAX485 module, live Modbus reads of
 both Output Frequency and Output Current succeed with correct CRCs, and the CSV output
-matches GSoft2's own readings. `docs/wiring.md` sections 2.1/2.2 (ESP32 GPIO numbers)
-are still stale/superseded by the STM32 pinout (PA8/PA9/PA10, see `firmware/stm32/README.md`);
-section 2.3 (RS-485 ↔ VFD pinout) was MCU-agnostic and needed no changes.
+matches GSoft2's own readings. `docs/wiring.md` sections 2.1/2.2 have since been updated
+to the real STM32 pinout (PA8/PA9/PA10, see `firmware/stm32/README.md`); section 2.3
+(RS-485 ↔ VFD pinout) was MCU-agnostic and needed no changes.
+
+## 9. No-load baseline: missing down-direction run at 4.85 Hz
+`results/2026-10-05/analysis/groups.csv` (the no-load baseline session) has no
+down-direction row at 4.85 Hz, searched across every `results/*/analysis/groups.csv`
+and `runs.csv` in the repo. Table VI of the paper nonetheless reports values for it
+(slip 0.030, 0.761 A) that don't trace back to any logged session found. Found while
+regenerating Fig. 4 from real data in `tools/matlab/generate_figures.m` — the figure
+honestly shows this as a gap rather than reproducing those two numbers. Either locate
+the original source run for that Table VI entry, or re-run a 4.85 Hz no-load
+down-direction test so Table VI and Fig. 4 agree.
+
+## 10. MATLAB/Octave figure script and diagrams/tables export — DONE
+`tools/matlab/generate_figures.m` regenerates every figure used in the paper and both
+decks (system block diagram, RS-485/MAX485 wiring, no-load baseline, calibration fit,
+blind validation, LOOCV comparison) directly from `results/*/analysis/groups.csv` where
+possible. A standalone, fully-editable `Sensorless_Load_Estimation_Diagrams_Tables_Export`
+deck (same rev number as the paper) carries every figure and table as native PowerPoint
+content for reuse outside the paper itself.
 
 ## 8. Future enhancements (not started)
 Ideas for after real calibration/validation data is collected. A local HMI/keypad was
