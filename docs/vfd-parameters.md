@@ -38,6 +38,51 @@ over the drive's USB connection before running any test.
 this table is taken from documentation for this same motor/drive pairing but hasn't
 been re-checked against your specific unit's firmware/parameter revision.
 
+## Actual settings (confirmed from GSoft2 export, `VFDParameters.xlsx`)
+
+This is the real parameter dump read back off the drive, not the lab-manual-derived
+table above. Where the two disagree, this section is the one that reflects the
+physical unit.
+
+| Pr. No | Description | Data (set value) | Default | Min | Max |
+|---|---|---|---|---|---|
+| 00.16 | Duty Selection | 0 | 1 | 0 | 1 |
+| 00.20 | Source of FREQ | 2 (external analog/pot) | 0 | 0 | 9 |
+| 00.21 | Source of OPER | 1 (external terminals) | 0 | 0 | 5 |
+| 01.02 | MAX Out-VOLT 1 | 208.0 V | 220.0 | 0.0 | 255.0 |
+| **01.10** | **Upper Bound FREQ** | **10.00 Hz** | 599.00 | 0.00 | 599.00 |
+| 01.12 | 1st ACC Time | 1.50 sec | 10.00 | 0.00 | 600.00 |
+| 01.13 | 1st DEC Time | 1.50 sec | 10.00 | 0.00 | 600.00 |
+| 05.01 | Motor1 Rated A | 1.80 A | 0.00 | 0.50 | 6.00 |
+| 05.02 | Motor1 Rated P | 0.73 kW | 0.00 | 0.00 | 655.35 |
+| 05.03 | Motor1 Rated S | 1650 rpm | 1710 | 0 | 65535 |
+| 05.05 | Motor1 No-Load | 0.72 A | 0.00 | 0.00 | 1.80 |
+| 05.06 | Motor1 Rs | 5.156 ohm | 0.000 | 0.000 | 65.535 |
+| 06.03 | OCA Level | 120% | 180 | 0 | 150 |
+| 06.04 | OCN Level | 120% | 180 | 0 | 150 |
+| 06.15 | OH Warn Level | 100.0 °C | 105.0 | 0.0 | 110.0 |
+| 09.04 | MODBUS Protocol | 13 | 15 | 1 | 17 |
+| 10.52 | INJ Magnitude | 15.0 | 30.0 | 0.0 | 100.0 |
+
+**P01.10 is the cable-length-driven safety cap**, not P01.00. P01.00 (max output
+frequency, 60.00 Hz) is left at the motor's rating; P01.10 separately clamps the
+*commanded* frequency to 10.00 Hz regardless of pot position. With the confirmed
+20T/60T (3:1) belt reduction between motor and drum, this caps drum speed at 100 RPM,
+giving roughly 19.6 s of the 64 in usable cable travel before running out — a
+comfortable margin for logging a settled plateau. See `docs/open-items.md` item 9 for
+the underlying cable-travel math.
+
+⚠ **Discrepancy to confirm, not assumed away:** P05.02 (Motor1 Rated P) reads 0.73 kW
+here, exactly double the 0.37 kW on the motor's own nameplate (SE2673-1K7). Flagging
+rather than "correcting" either number — confirm which is right before this goes in
+the paper.
+
+P09.04 = 13 is inferred to correspond to 9600 baud / 8N2 (no parity, 2 stop bits),
+since that is the configuration already confirmed working end-to-end against real
+hardware (see `docs/open-items.md` item 3) — not independently decoded from the GS20
+manual's P09.04 code table, so treat this mapping as a reasonable inference rather
+than a verified fact if it ever needs to be cited precisely.
+
 ## Note on P00.20 for calibration testing
 
 Your test plan needs precise, repeatable frequency setpoints (10/20/30 Hz for the
