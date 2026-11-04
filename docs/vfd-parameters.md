@@ -72,10 +72,10 @@ giving roughly 19.6 s of the 64 in usable cable travel before running out — a
 comfortable margin for logging a settled plateau. See `docs/open-items.md` item 9 for
 the underlying cable-travel math.
 
-⚠ **Discrepancy to confirm, not assumed away:** P05.02 (Motor1 Rated P) reads 0.73 kW
-here, exactly double the 0.37 kW on the motor's own nameplate (SE2673-1K7). Flagging
-rather than "correcting" either number — confirm which is right before this goes in
-the paper.
+**Resolved:** 0.37 kW (the motor's own nameplate, SE2673-1K7) is correct. P05.02 on
+the drive currently reads 0.73 kW, exactly double - this is a wrong value entered on
+the physical drive, not a real property of the motor, and should be corrected in
+GSoft2 (set P05.02 to 0.73 → 0.37 kW) before the next test session.
 
 P09.04 = 13 is inferred to correspond to 9600 baud / 8N2 (no parity, 2 stop bits),
 since that is the configuration already confirmed working end-to-end against real

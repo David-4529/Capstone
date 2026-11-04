@@ -64,9 +64,9 @@ are still stale/superseded by the STM32 pinout (PA8/PA9/PA10, see `firmware/stm3
 section 2.3 (RS-485 ↔ VFD pinout) was MCU-agnostic and needed no changes.
 
 ## 8. Future enhancements (not started)
-Ideas for after real calibration/validation data is collected:
-- **Local HMI/keypad** on the rig itself (standalone display + button input), so the
-  station doesn't need a laptop tethered via serial to run a test or see live values.
+Ideas for after real calibration/validation data is collected. A local HMI/keypad was
+considered and descoped (decision made, not a future item) - the PC logger plus the
+STM32's serial output is the project's final, only interface.
 - **Simple web dashboard** showing live/logged load readings and the model's estimated
   weight (slip-based and current-based side by side), likely reading off the same CSV
   stream the STM32 already produces. Would need a way to get that serial stream onto
