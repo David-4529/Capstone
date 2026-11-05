@@ -1,4 +1,4 @@
-% generate_figures.m  (Rev 3)
+% generate_figures.m  (Rev 5)
 %
 % Sensorless Load Estimation Using Motor Slip on a Low-Cost VFD-Driven Induction Motor
 % Single script, regenerates every figure in the paper/deck directly from logged data.
@@ -173,8 +173,6 @@ is_noload = (total_kg == 0);
 % Plot against the fixed 4-point frequency grid, NaN-filled where no no-load
 % run exists at that freq/direction, so a missing point breaks the line
 % (no false interpolation) instead of silently connecting across the gap.
-% NOTE: no-load "down" has no logged run at 4.85 Hz anywhere under results/ -
-% see the flagged note this produces in the paper's Table VI discussion.
 grid_slip_up = nan(1, numel(TARGET_FREQS)); grid_slip_down = grid_slip_up;
 grid_cur_up = grid_slip_up; grid_cur_down = grid_slip_up;
 for k = 1:numel(TARGET_FREQS)
@@ -184,6 +182,15 @@ for k = 1:numel(TARGET_FREQS)
   if any(mu); grid_slip_up(k) = slip_mean(find(mu, 1)); grid_cur_up(k) = current_mean(find(mu, 1)); end
   if any(md); grid_slip_down(k) = slip_mean(find(md, 1)); grid_cur_down(k) = current_mean(find(md, 1)); end
 end
+
+% No-load down @ 4.85 Hz is not in any groups.csv (the analysis pipeline only
+% keeps points with a matching steady current row), but it IS a real, sourced
+% reading: Baseline_Test_Data_2026-10-05.docx Section 5.4 records a shaft RPM
+% of 141 read by eye for that down run (sync RPM assumed equal to the one
+% logged run that session, 145.4), giving slip = 0.030. No current was ever
+% logged for that specific run (the doc marks it "-"), so the current panel
+% correctly keeps its gap here while the slip panel does not.
+grid_slip_down(TARGET_FREQS == 4.85) = 0.030;
 
 subplot(1, 2, 1); hold on;
 plot(TARGET_FREQS, grid_slip_up, '-o', 'LineWidth', 2, 'MarkerSize', 8, 'Color', [0.11 0.34 0.22], 'DisplayName', 'Up (lifting)');

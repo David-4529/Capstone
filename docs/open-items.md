@@ -4,36 +4,20 @@ The data-acquisition and communication platform is built, wired, and validated
 end-to-end on real hardware (STM32 Nucleo-F401RE, RS-485/MAX485 to the VFD, PC-side
 logger). What remains falls into two groups: things that need an action from David
 (Section A) and lower-priority/deferred work (Section B). Every item below is cross-
-checked against the current paper (`Sensorless_Load_Estimation_IEEE_Rev3.docx`) and
-both decks as of Rev 3.
+checked against the current paper (`Sensorless_Load_Estimation_IEEE_Rev5.docx`) and
+all three decks as of Rev 5.
 
 ## A. Needs an action from David
 
-### A1. Locate or re-run the missing 4.85 Hz no-load down-direction data point
-`results/2026-10-05/analysis/groups.csv` (the no-load baseline session) has no
-down-direction row at 4.85 Hz — checked against every `results/*/analysis/groups.csv`
-and `runs.csv` in the repo. Table VI of the paper nonetheless reports values for it
-(slip 0.030, 0.761 A) that don't trace back to any logged session found. Found while
-regenerating Fig. 4 from real data in `tools/matlab/generate_figures.m` — the figure
-honestly shows this as a gap rather than reproducing those two numbers.
-
-A promising-looking lead (a raw `load0kg_base0kg`-labeled run export, 2026-10-07,
-4.85 Hz) was checked on 2026-11-05 and ruled out: its currents match
-`results/2026-10-07/rpm_notes.csv`'s already-used **1.46 kg metal-box** session
-exactly (up avg 0.933 A, down avg 0.693 A — the `total_kg=0` in that raw export is
-just because the `LOAD` command hadn't been sent yet when the raw file was captured,
-not a real no-load run). Still need either the original no-load source run, or a
-fresh 4.85 Hz no-load down-direction test.
-
-### A2. Run the higher-frequency validation tests (6.36–10.00 Hz)
+### A1. Run the higher-frequency validation tests (6.36–10.00 Hz)
 All calibration and blind-validation data tops out at 6.36 Hz; the drive's confirmed
 safety cap is P01.10 = 10.00 Hz. Section V-E of the paper and Table X are reserved and
 flagged in red, waiting for this data — same procedure as the existing blind-validation
 runs (Section V-C): run a commanded frequency in that range, predict the load live
 with the calibrated model, then reveal and log the actual weight.
 
-### A3. Source two stock photos for the major deck
-Two slides in `Sensorless_Load_Estimation_Deck_Rev3.pptx` still show a dashed
+### A2. Source two stock photos for the major deck
+Two slides in `Sensorless_Load_Estimation_Deck_Rev5.pptx` still show a dashed
 placeholder box instead of a real image, since neither is a photo of this project's
 own hardware:
 - **"Our Approach" slide:** a generic photo of a dedicated torque transducer / load
@@ -89,3 +73,11 @@ of scope for the bare Nucleo without an added Ethernet/WiFi module).
   The existing manual `RPM <value>` entry workflow stays as the permanent method.
 - **Torque sensor driver/Windows incompatibility** — David's call: not pursuing.
   Stays noted as a future-work idea in the paper (Section VII) only, not an open item.
+- **4.85 Hz no-load down-direction data gap** — fully resolved by
+  `Baseline_Test_Data_2026-10-05.docx` (Section 5.4), which David provided. The slip
+  value in Table VI (0.030) is real: a shaft RPM of 141 read by eye for a down run
+  too brief to produce a steady-state current row. The current value previously shown
+  (0.761 A) had no source anywhere and has been corrected to "not recorded." Fig. 4
+  now plots the documented down-direction slip at 4.85 Hz (panel a) while correctly
+  leaving a gap in current (panel b), sourced directly in
+  `tools/matlab/generate_figures.m` with a comment citing the originating document.
