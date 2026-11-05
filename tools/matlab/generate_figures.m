@@ -1,4 +1,4 @@
-% generate_figures.m  (Rev 5)
+% generate_figures.m  (Rev 6)
 %
 % Sensorless Load Estimation Using Motor Slip on a Low-Cost VFD-Driven Induction Motor
 % Single script, regenerates every figure in the paper/deck directly from logged data.
@@ -36,6 +36,14 @@
 % one, not recomputed.
 
 clear; clc; close all;
+
+% Paper figures get embedded small (IEEE two-column), so default text/axes
+% sizes are bumped well above Octave's defaults to stay legible there -
+% flagged as too small to read in Rev 3 review comments.
+set(0, 'DefaultAxesFontSize', 15);
+set(0, 'DefaultTextFontSize', 15);
+set(0, 'DefaultLineLineWidth', 2.2);
+set(0, 'DefaultAxesLineWidth', 1.1);
 
 THIS_DIR = fileparts(mfilename('fullpath'));
 REPO_ROOT = fileparts(fileparts(THIS_DIR)); % tools/matlab -> tools -> repo root
@@ -136,30 +144,32 @@ axis([0 10 0 5]); axis off; hold on;
 
 % Three boxes: VFD RJ45, MAX485 module, STM32 Nucleo
 rectangle('Position', [0.3, 1.6, 2.3, 1.8], 'FaceColor', [0.72 0.86 0.78], 'LineWidth', 1.5);
-text(1.45, 3.0, 'VFD RJ45\n(RS-485 port)', 'HorizontalAlignment', 'center', 'FontWeight', 'bold', 'FontSize', 10);
+text(1.45, 3.0, 'VFD RJ45\n(RS-485 port)', 'HorizontalAlignment', 'center', 'FontWeight', 'bold', 'FontSize', 13);
 rectangle('Position', [3.85, 1.0, 2.3, 3.0], 'FaceColor', [0.95 0.87 0.70], 'LineWidth', 1.5);
-text(5.0, 3.65, 'MAX485', 'HorizontalAlignment', 'center', 'FontWeight', 'bold', 'FontSize', 10);
+text(5.0, 3.65, 'MAX485', 'HorizontalAlignment', 'center', 'FontWeight', 'bold', 'FontSize', 13);
 rectangle('Position', [7.4, 1.6, 2.3, 1.8], 'FaceColor', [0.72 0.86 0.78], 'LineWidth', 1.5);
-text(8.55, 3.0, 'STM32\nNucleo-F401RE', 'HorizontalAlignment', 'center', 'FontWeight', 'bold', 'FontSize', 10);
+text(8.55, 3.0, 'STM32\nNucleo-F401RE', 'HorizontalAlignment', 'center', 'FontWeight', 'bold', 'FontSize', 13);
 
-% VFD <-> MAX485 pin pairs (Table III)
-vfd_pins = {'Blue -> B', 'White/Blue -> A', 'White/Green -> GND'};
+% VFD <-> MAX485 pin pairs (Table III). Signal names only, no wire colors -
+% colors are documented separately in docs/wiring.md for anyone re-wiring it;
+% this figure is the signal map.
+vfd_pins = {'A', 'B', 'GND'};
 for k = 1:3
   y = 2.9 - (k-1)*0.55;
-  line([2.6 3.85], [y y], 'Color', 'k', 'LineWidth', 1.2);
-  text(3.2, y+0.15, vfd_pins{k}, 'HorizontalAlignment', 'center', 'FontSize', 7.5);
+  line([2.6 3.85], [y y], 'Color', 'k', 'LineWidth', 1.5);
+  text(3.2, y+0.17, vfd_pins{k}, 'HorizontalAlignment', 'center', 'FontSize', 11, 'FontWeight', 'bold');
 end
 
 % MAX485 <-> STM32 pin pairs
 stm_pins = {'VCC -> 3.3V', 'DI -> D8', 'DE -> D7', 'RE -> D7', 'RO -> D2'};
 for k = 1:5
   y = 3.7 - (k-1)*0.55;
-  line([6.15 7.4], [y y], 'Color', 'k', 'LineWidth', 1.2);
-  text(6.775, y+0.15, stm_pins{k}, 'HorizontalAlignment', 'center', 'FontSize', 7.5);
+  line([6.15 7.4], [y y], 'Color', 'k', 'LineWidth', 1.5);
+  text(6.775, y+0.17, stm_pins{k}, 'HorizontalAlignment', 'center', 'FontSize', 10.5);
 end
 
 text(5.0, 0.55, 'DE and RE tied together to one GPIO (D7) - asserted only while transmitting', ...
-     'HorizontalAlignment', 'center', 'FontSize', 8, 'FontAngle', 'italic');
+     'HorizontalAlignment', 'center', 'FontSize', 10.5, 'FontAngle', 'italic');
 saveas(fig, fullfile(OUT_DIR, 'fig2_rs485_wiring.png'));
 close(fig);
 
@@ -167,7 +177,7 @@ close(fig);
 % Figure 4: No-load baseline - slip and current vs. frequency, two panels
 % (Fig. 3 is the Drum_Rev_0 CAD render, produced separately - not by this script)
 % ============================================================================
-fig = figure('Visible', 'off', 'Position', [0 0 1100 450]);
+fig = figure('Visible', 'off', 'Position', [0 0 1300 520]);
 is_noload = (total_kg == 0);
 
 % Plot against the fixed 4-point frequency grid, NaN-filled where no no-load
@@ -210,7 +220,7 @@ close(fig);
 % ============================================================================
 % Figure 5: Calibrated model - current vs load, up-direction, one fit per frequency
 % ============================================================================
-fig = figure('Visible', 'off', 'Position', [0 0 900 600]);
+fig = figure('Visible', 'off', 'Position', [0 0 1000 680]);
 hold on;
 colors = [0.11 0.34 0.22; 0.72 0.59 0.36; 0.55 0.0 0.0; 0.2 0.4 0.75];
 markers = {'o', 's', '^', 'd'};
@@ -240,24 +250,27 @@ close(fig);
 
 % ============================================================================
 % Figure 6: Blind validation - predicted vs. actual
-% Transcribed from Table VIII of the paper (Resistor 1/2, T-Block - these sessions'
-% raw data was analyzed ad hoc and is not checked into results/ as a groups.csv).
+% Transcribed from Table VIII of the paper (Resistor 1/2, T-housing - these
+% sessions' raw data was analyzed ad hoc and is not checked into results/ as a
+% groups.csv).
 % ============================================================================
 actual =    [0.64, 0.64, 0.82, 0.82, 0.54, 0.54];
 predicted = [0.27, 0.18, 0.87, 0.00, 0.54, 0.00];
-labels =    {'Resistor 1 @1.44Hz','Resistor 1 @6.21Hz','Resistor 2 @2.90Hz', ...
-             'Resistor 2 @4.66Hz','T-Block @5.63Hz','T-Block @6.81Hz'};
+% Note: deliberately no '@' in these labels - Octave's gnuplot backend treats
+% it as a text-escape character and mangles the following characters.
+labels =    {'Resistor 1, 1.44 Hz','Resistor 1, 6.21 Hz','Resistor 2, 2.90 Hz', ...
+             'Resistor 2, 4.66 Hz','T-housing, 5.63 Hz','T-housing, 6.81 Hz'};
 
-fig = figure('Visible', 'off', 'Position', [0 0 800 700]);
+fig = figure('Visible', 'off', 'Position', [0 0 950 620]);
 hold on;
 plot([0 1], [0 1], 'k--', 'LineWidth', 1, 'DisplayName', 'Perfect prediction (y = x)');
-plot(actual, predicted, 'o', 'MarkerSize', 12, 'MarkerFaceColor', [0.72 0.09 0.09], 'MarkerEdgeColor', 'k', 'DisplayName', 'Blind validation point');
+plot(actual, predicted, 'o', 'MarkerSize', 10, 'MarkerFaceColor', [0.72 0.09 0.09], 'MarkerEdgeColor', 'k', 'DisplayName', 'Blind validation point');
 for i = 1:numel(actual)
-  text(actual(i) + 0.015, predicted(i), labels{i}, 'FontSize', 8);
+  text(actual(i) + 0.045, predicted(i), labels{i}, 'FontSize', 11, 'VerticalAlignment', 'middle');
 end
 xlabel('Actual Load (kg)'); ylabel('Predicted Load (kg)');
 title('Blind Validation: Predicted vs. Actual Load');
-xlim([0 1]); ylim([0 1]); axis square; legend('Location', 'northwest'); grid on;
+xlim([0 1.3]); ylim([0 1]); legend('Location', 'northwest'); grid on;
 saveas(fig, fullfile(OUT_DIR, 'fig6_blind_validation.png'));
 close(fig);
 
@@ -271,9 +284,9 @@ close(fig);
 model_forms = {'current + freq\n(linear)', '+ interaction\nterm', '+ quadratic\nfreq', 'full\n(all terms)'};
 mape = [52.0, 56.8, 56.5, 61.7];
 
-fig = figure('Visible', 'off', 'Position', [0 0 800 500]);
+fig = figure('Visible', 'off', 'Position', [0 0 900 620]);
 bar(mape, 'FaceColor', [0.11 0.34 0.22]);
-set(gca, 'XTickLabel', model_forms);
+set(gca, 'XTickLabel', model_forms, 'Position', [0.10 0.24 0.86 0.62]);
 ylabel('MAPE (%)');
 title('LOOCV Error by Model Form - More Complexity Does Not Help');
 ylim([0 70]); grid on;

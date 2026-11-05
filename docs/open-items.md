@@ -4,20 +4,26 @@ The data-acquisition and communication platform is built, wired, and validated
 end-to-end on real hardware (STM32 Nucleo-F401RE, RS-485/MAX485 to the VFD, PC-side
 logger). What remains falls into two groups: things that need an action from David
 (Section A) and lower-priority/deferred work (Section B). Every item below is cross-
-checked against the current paper (`Sensorless_Load_Estimation_IEEE_Rev5.docx`) and
-all three decks as of Rev 5.
+checked against the current paper (`Sensorless_Load_Estimation_IEEE_Rev6.docx`) and
+all four deliverables as of Rev 6.
 
 ## A. Needs an action from David
 
-### A1. Run the higher-frequency validation tests (6.36–10.00 Hz)
+### A1. Rework Fig. 1 (system block diagram) together
+Flagged in David's Rev 3 review comments: "This figure needs to be worked, let's work
+together on what this should look like." Not auto-edited — the current version (drawn
+by `tools/matlab/generate_figures.m`, boxes for PC Logger/STM32/MAX485/VFD/Motor+Load)
+stays as a placeholder in the paper until we talk through what it should actually show.
+
+### A2. Run the higher-frequency validation tests (6.36–10.00 Hz)
 All calibration and blind-validation data tops out at 6.36 Hz; the drive's confirmed
 safety cap is P01.10 = 10.00 Hz. Section V-E of the paper and Table X are reserved and
 flagged in red, waiting for this data — same procedure as the existing blind-validation
 runs (Section V-C): run a commanded frequency in that range, predict the load live
 with the calibrated model, then reveal and log the actual weight.
 
-### A2. Source two stock photos for the major deck
-Two slides in `Sensorless_Load_Estimation_Deck_Rev5.pptx` still show a dashed
+### A3. Source two stock photos for the major deck
+Two slides in `Sensorless_Load_Estimation_Deck_Rev6.pptx` still show a dashed
 placeholder box instead of a real image, since neither is a photo of this project's
 own hardware:
 - **"Our Approach" slide:** a generic photo of a dedicated torque transducer / load
@@ -25,6 +31,11 @@ own hardware:
 - **"Our Approach" slide:** a photo or logo of PAR Systems' anti-sway crane product
   (the commercial telemetry-first precedent cited as reference [1]).
 Any representative stock photo or the vendor's own product image works for both.
+
+### A4. Photo of the VFD's RJ45 jack specifically
+Requested in David's Rev 3 review comments. The paper has a wide shot of the whole
+wired VFD (Fig. 3) but not a close-up of the RJ45 jack itself where the RS-485 link
+taps in. Flagged with a red placeholder in the paper, Section III-C.
 
 ## B. Lower priority / deferred
 
@@ -81,3 +92,22 @@ of scope for the bare Nucleo without an added Ethernet/WiFi module).
   now plots the documented down-direction slip at 4.85 Hz (panel a) while correctly
   leaving a gap in current (panel b), sourced directly in
   `tools/matlab/generate_figures.m` with a comment citing the originating document.
+- **43 Rev 3 Word review comments** — David attached a Rev 3 copy of the paper with 43
+  tracked comments that had never reached this session before 2026-11-05; all but the
+  two items above (Fig. 1 redesign, RJ45 photo) are resolved in Rev 6: acronyms spelled
+  out on first use (VFD, GPIO, MRAS), Human-Machine Interface capitalized, the
+  self-referential "this paper differs from a typical capstone report" paragraph and
+  the "Offset Mistake"/"Other Contributing Factors" sections removed, wire colors
+  dropped from every table and from Fig. 4's regenerated diagram (signal names only),
+  Table I's Notes column and Table II-B's Wire Color column removed, BOM headers
+  reworded, a new VFD-parameters table (Table I-C) added introducing GSoft2, the VFD
+  photo and raw CSV screenshot promoted to numbered figures (Fig. 3/Fig. 5, with every
+  later figure renumbered to match), "T-Block" renamed to "T-housing" everywhere, a
+  slip-physics explanation added to the paper (previously only in the deck), an
+  OLS-fitting explanation added to Table VII, units clarified on r²/n, a mismatched
+  logger-row example corrected (910626 instead of 911375, matching the screenshot),
+  and all five result/diagram figures enlarged to full page width after testing showed
+  they were unreadable at IEEE two-column width - which also surfaced and fixed a
+  LibreOffice rendering defect where a short two-column section before a one-column
+  figure could split a table's header from its body across the column break. The
+  entire Results section (V) is single-column throughout as a result.
