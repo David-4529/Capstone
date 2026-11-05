@@ -46,6 +46,21 @@ but it's a multi-component shot (VFD + motor + control station), not a clean
 per-item identification photo, so it wasn't reused here rather than mislabel it.
 Distinct from A4 (RJ45 jack close-up specifically).
 
+### A6. Pull torque readings from the SERVO Machine Test System to validate against
+David's note: get into the servo machine and pull its torque data as an independent
+check on the slip-based and current-based load estimates. This is a manual reading off
+the machine's own torque display, the same method already used for shaft RPM - it does
+not require solving the torque sensor's Windows driver incompatibility (that stays
+not-pursued for *automated* logging; see Resolved below). Need: torque readings taken
+alongside a normal test session (same known weight, frequency, and run) so they can be
+lined up against that run's predicted load in the paper/decks.
+
+### A7. Motor torque characteristics for the paper
+David's note: add the motor's torque characteristics. Need the specific numbers from
+David - e.g. the Lucas Nülle SE2673-1K7's rated/nameplate torque, breakdown torque, or
+a torque-speed curve from its datasheet - to add as background/equipment context
+(Section III-A). Not fabricating placeholder values; waiting on the source data.
+
 ## B. Lower priority / deferred
 
 ### B1. Lab manual (instructor + student editions)
@@ -91,8 +106,14 @@ of scope for the bare Nucleo without an added Ethernet/WiFi module).
   the Rev 4 visual refresh.
 - **SERVO Machine Test System automated data interface** — David's call: not pursuing.
   The existing manual `RPM <value>` entry workflow stays as the permanent method.
-- **Torque sensor driver/Windows incompatibility** — David's call: not pursuing.
-  Stays noted as a future-work idea in the paper (Section VII) only, not an open item.
+- **Torque sensor driver/Windows incompatibility** — David's call: not pursuing
+  *automated* logging via the sensor's software. Stays noted as a future-work idea in
+  the paper (Section VII). A manual torque-reading workaround is now tracked
+  separately as A6.
+- **Calibration weight ceiling (1.46 kg) explained** — David identified that heavier
+  loads slip the hand-tensioned belt rather than drive the drum, which is why 0.32,
+  0.58, and 1.46 kg were the weights used. Added to the paper (Section IV-C) and the
+  major deck's Calibration Procedure slide.
 - **4.85 Hz no-load down-direction data gap** — fully resolved by
   `Baseline_Test_Data_2026-10-05.docx` (Section 5.4), which David provided. The slip
   value in Table VI (0.030) is real: a shaft RPM of 141 read by eye for a down run
