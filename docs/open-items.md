@@ -4,8 +4,8 @@ The data-acquisition and communication platform is built, wired, and validated
 end-to-end on real hardware (STM32 Nucleo-F401RE, RS-485/MAX485 to the VFD, PC-side
 logger). What remains falls into two groups: things that need an action from David
 (Section A) and lower-priority/deferred work (Section B). Every item below is cross-
-checked against the current paper (`Sensorless_Load_Estimation_IEEE_Rev6.docx`) and
-all four deliverables as of Rev 6.
+checked against the current paper (`Sensorless_Load_Estimation_IEEE_Rev7.docx`) and
+all four deliverables as of Rev 7.
 
 ## A. Needs an action from David
 
@@ -36,6 +36,15 @@ Any representative stock photo or the vendor's own product image works for both.
 Requested in David's Rev 3 review comments. The paper has a wide shot of the whole
 wired VFD (Fig. 3) but not a close-up of the RJ45 jack itself where the RS-485 link
 taps in. Flagged with a red placeholder in the paper, Section III-C.
+
+### A5. Dedicated VFD and controller photos for the major deck's Hardware Platform table
+Surfaced during the Rev 7 deck redesign. `Sensorless_Load_Estimation_Deck_Rev7.pptx`,
+"Hardware Platform" slide (Table I), still shows red `[photo needed]` placeholders for
+the VFD and STM32 Nucleo-F401RE rows - only the Motor row has a photo. The deck does
+have a wide shot of the fully-wired VFD (`vfd_wired.jpg`, used as Fig. 3 elsewhere),
+but it's a multi-component shot (VFD + motor + control station), not a clean
+per-item identification photo, so it wasn't reused here rather than mislabel it.
+Distinct from A4 (RJ45 jack close-up specifically).
 
 ## B. Lower priority / deferred
 
