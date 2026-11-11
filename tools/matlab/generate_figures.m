@@ -1,4 +1,6 @@
-% generate_figures.m  (Rev 6)
+% generate_figures.m  (Rev 8)
+% All figures black/white/grayscale only - datasets distinguished by marker
+% shape and line style, not color, per IEEE black-and-white formatting requirement.
 %
 % Sensorless Load Estimation Using Motor Slip on a Low-Cost VFD-Driven Induction Motor
 % Single script, regenerates every figure in the paper/deck directly from logged data.
@@ -26,6 +28,7 @@
 %   fig5_calibration_fit.png      Fig. 5
 %   fig6_blind_validation.png     Fig. 6
 %   fig7_loocv_model_comparison.png Fig. 7
+%   fig8_torque_validation.png    Fig. 10 (independent torque-sensor validation)
 %
 % Fig. 1/2 are drawn schematics (wiring per docs/wiring.md + Table III). Fig. 4/5 are
 % computed directly from the real groups.csv files checked into the repo (genuine
@@ -102,11 +105,11 @@ fig = figure('Visible', 'off', 'Position', [0 0 1000 380]);
 axis([0 10 0 3.6]); axis off; hold on;
 box_h = 1.2;
 boxes = {
-  {0.3, 'PC Logger\n(operator HMI)', [0.85 0.85 0.85]}, ...
-  {2.5, 'STM32\nNucleo-F401RE', [0.72 0.86 0.78]}, ...
-  {4.7, 'RS-485\nMAX485', [0.95 0.87 0.70]}, ...
-  {6.6, 'VFD\n(DURApulse\nGS23-21P0)', [0.72 0.86 0.78]}, ...
-  {8.6, 'Motor + Load', [0.85 0.85 0.85]}
+  {0.3, 'PC Logger\n(operator HMI)', [0.88 0.88 0.88]}, ...
+  {2.5, 'STM32\nNucleo-F401RE', [0.65 0.65 0.65]}, ...
+  {4.7, 'RS-485\nMAX485', [0.78 0.78 0.78]}, ...
+  {6.6, 'VFD\n(DURApulse\nGS23-21P0)', [0.65 0.65 0.65]}, ...
+  {8.6, 'Motor + Load', [0.88 0.88 0.88]}
 };
 box_w = 1.7;
 centers = zeros(1, numel(boxes));
@@ -143,11 +146,11 @@ fig = figure('Visible', 'off', 'Position', [0 0 1000 500]);
 axis([0 10 0 5]); axis off; hold on;
 
 % Three boxes: VFD RJ45, MAX485 module, STM32 Nucleo
-rectangle('Position', [0.3, 1.6, 2.3, 1.8], 'FaceColor', [0.72 0.86 0.78], 'LineWidth', 1.5);
+rectangle('Position', [0.3, 1.6, 2.3, 1.8], 'FaceColor', [0.65 0.65 0.65], 'LineWidth', 1.5);
 text(1.45, 3.0, 'VFD RJ45\n(RS-485 port)', 'HorizontalAlignment', 'center', 'FontWeight', 'bold', 'FontSize', 13);
-rectangle('Position', [3.85, 1.0, 2.3, 3.0], 'FaceColor', [0.95 0.87 0.70], 'LineWidth', 1.5);
+rectangle('Position', [3.85, 1.0, 2.3, 3.0], 'FaceColor', [0.78 0.78 0.78], 'LineWidth', 1.5);
 text(5.0, 3.65, 'MAX485', 'HorizontalAlignment', 'center', 'FontWeight', 'bold', 'FontSize', 13);
-rectangle('Position', [7.4, 1.6, 2.3, 1.8], 'FaceColor', [0.72 0.86 0.78], 'LineWidth', 1.5);
+rectangle('Position', [7.4, 1.6, 2.3, 1.8], 'FaceColor', [0.65 0.65 0.65], 'LineWidth', 1.5);
 text(8.55, 3.0, 'STM32\nNucleo-F401RE', 'HorizontalAlignment', 'center', 'FontWeight', 'bold', 'FontSize', 13);
 
 % VFD <-> MAX485 pin pairs (Table III). Signal names only, no wire colors -
@@ -203,14 +206,14 @@ end
 grid_slip_down(TARGET_FREQS == 4.85) = 0.030;
 
 subplot(1, 2, 1); hold on;
-plot(TARGET_FREQS, grid_slip_up, '-o', 'LineWidth', 2, 'MarkerSize', 8, 'Color', [0.11 0.34 0.22], 'DisplayName', 'Up (lifting)');
-plot(TARGET_FREQS, grid_slip_down, '-s', 'LineWidth', 2, 'MarkerSize', 8, 'Color', [0.72 0.59 0.36], 'DisplayName', 'Down (lowering)');
+plot(TARGET_FREQS, grid_slip_up, '-o', 'LineWidth', 2, 'MarkerSize', 8, 'Color', 'k', 'MarkerFaceColor', 'k', 'DisplayName', 'Up (lifting)');
+plot(TARGET_FREQS, grid_slip_down, '--s', 'LineWidth', 2, 'MarkerSize', 8, 'Color', 'k', 'MarkerFaceColor', 'k', 'DisplayName', 'Down (lowering)');
 xlabel('Commanded Frequency (Hz)'); ylabel('Slip (fractional)');
 title('(a) Slip vs. Frequency'); legend('Location', 'northeast'); grid on;
 
 subplot(1, 2, 2); hold on;
-plot(TARGET_FREQS, grid_cur_up, '-o', 'LineWidth', 2, 'MarkerSize', 8, 'Color', [0.11 0.34 0.22], 'DisplayName', 'Up (lifting)');
-plot(TARGET_FREQS, grid_cur_down, '-s', 'LineWidth', 2, 'MarkerSize', 8, 'Color', [0.72 0.59 0.36], 'DisplayName', 'Down (lowering)');
+plot(TARGET_FREQS, grid_cur_up, '-o', 'LineWidth', 2, 'MarkerSize', 8, 'Color', 'k', 'MarkerFaceColor', 'k', 'DisplayName', 'Up (lifting)');
+plot(TARGET_FREQS, grid_cur_down, '--s', 'LineWidth', 2, 'MarkerSize', 8, 'Color', 'k', 'MarkerFaceColor', 'k', 'DisplayName', 'Down (lowering)');
 xlabel('Commanded Frequency (Hz)'); ylabel('Output Current (A)');
 title('(b) Output Current vs. Frequency'); legend('Location', 'northwest'); grid on;
 
@@ -222,8 +225,9 @@ close(fig);
 % ============================================================================
 fig = figure('Visible', 'off', 'Position', [0 0 1000 680]);
 hold on;
-colors = [0.11 0.34 0.22; 0.72 0.59 0.36; 0.55 0.0 0.0; 0.2 0.4 0.75];
 markers = {'o', 's', '^', 'd'};
+linestyles = {'-', '--', '-.', ':'};
+facecolors = {'k', 'k', 'k', 'k'};
 is_up = strcmp(direction, 'up');
 coeffs = struct();
 for k = 1:numel(TARGET_FREQS)
@@ -237,9 +241,9 @@ for k = 1:numel(TARGET_FREQS)
   coeffs.(sprintf('f%d', k)) = p;
   xs = linspace(min(x) - 0.02, max(x) + 0.02, 20);
   ys = polyval(p, xs);
-  plot(x, y, markers{k}, 'MarkerSize', 10, 'MarkerFaceColor', colors(k,:), 'MarkerEdgeColor', 'k', ...
+  plot(x, y, markers{k}, 'MarkerSize', 10, 'MarkerFaceColor', facecolors{k}, 'MarkerEdgeColor', 'k', ...
        'DisplayName', sprintf('%.2f Hz data', tf));
-  plot(xs, ys, '-', 'Color', colors(k,:), 'LineWidth', 1.5, 'HandleVisibility', 'off');
+  plot(xs, ys, linestyles{k}, 'Color', 'k', 'LineWidth', 1.5, 'HandleVisibility', 'off');
   printf('Fit %.2f Hz: load_kg = %.3f * current_A + %.3f  (n=%d)\n', tf, p(1), p(2), numel(x));
 end
 xlabel('Output Current (A)'); ylabel('Load (kg)');
@@ -264,7 +268,7 @@ labels =    {'Resistor 1, 1.44 Hz','Resistor 1, 6.21 Hz','Resistor 2, 2.90 Hz', 
 fig = figure('Visible', 'off', 'Position', [0 0 950 620]);
 hold on;
 plot([0 1], [0 1], 'k--', 'LineWidth', 1, 'DisplayName', 'Perfect prediction (y = x)');
-plot(actual, predicted, 'o', 'MarkerSize', 10, 'MarkerFaceColor', [0.72 0.09 0.09], 'MarkerEdgeColor', 'k', 'DisplayName', 'Blind validation point');
+plot(actual, predicted, 'o', 'MarkerSize', 10, 'MarkerFaceColor', 'k', 'MarkerEdgeColor', 'k', 'DisplayName', 'Blind validation point');
 for i = 1:numel(actual)
   text(actual(i) + 0.045, predicted(i), labels{i}, 'FontSize', 11, 'VerticalAlignment', 'middle');
 end
@@ -285,7 +289,7 @@ model_forms = {'current + freq\n(linear)', '+ interaction\nterm', '+ quadratic\n
 mape = [52.0, 56.8, 56.5, 61.7];
 
 fig = figure('Visible', 'off', 'Position', [0 0 900 620]);
-bar(mape, 'FaceColor', [0.11 0.34 0.22]);
+bar(mape, 'FaceColor', [0.75 0.75 0.75], 'EdgeColor', 'k', 'LineWidth', 1.2);
 set(gca, 'XTickLabel', model_forms, 'Position', [0.10 0.24 0.86 0.62]);
 ylabel('MAPE (%)');
 title('LOOCV Error by Model Form - More Complexity Does Not Help');
@@ -294,6 +298,54 @@ for i = 1:numel(mape)
   text(i, mape(i) + 1.5, sprintf('%.1f%%', mape(i)), 'HorizontalAlignment', 'center');
 end
 saveas(fig, fullfile(OUT_DIR, 'fig7_loocv_model_comparison.png'));
+close(fig);
+
+% ============================================================================
+% Figure 10: Independent torque-sensor validation (SERVO Machine Test System)
+% Transcribed from raw ActiveServo (.acts) capture files recorded directly off
+% the Lucas Nulle SERVO Machine Test System's own torque/speed sensor in
+% Nov 2026 - not in results/*/analysis/groups.csv, so not re-derivable from
+% this repo's normal pipeline (same situation as Fig. 6/7). 12 captures total:
+% 3 known objects x the same 4 commanded frequencies used throughout
+% calibration, ~20-30 marker points per capture.
+%
+% The SERVO system has no link to the VFD's commanded frequency, so its own
+% live "s/%" slip readout assumes the wrong (default) synchronous speed and is
+% unusable as-is. Slip shown here is recomputed from the sensor's raw speed
+% channel using this project's own known Ns = 120*f/P for whatever frequency
+% was actually commanded - the correct, usable number. Torque is read directly
+% off the sensor and needs no such correction.
+% ============================================================================
+tv_freqs = [1.39, 2.44, 4.85, 6.36];
+% object, torque (N*m) by freq, corrected slip (%) by freq
+tv_objects = {
+  {'Plastic housing (0.32 kg)', [0.02892, 0.02884, 0.02802, 0.02891], [40.29, 19.99, 6.41, 5.88]}, ...
+  {'Pliers (0.58 kg)',          [0.00979, 0.02875, 0.02798, 0.02829], [35.37, 23.50, 6.49, 7.16]}, ...
+  {'Metal housing (1.46 kg)',   [0.02822, 0.02907, 0.02851, 0.02775], [57.37, 30.91, 9.03, 9.75]}  ...
+};
+tv_markers = {'o', 's', '^'};
+tv_linestyles = {'-', '--', '-.'};
+tv_facecolors = {'k', 'k', 'k'};
+
+fig = figure('Visible', 'off', 'Position', [0 0 1300 520]);
+
+subplot(1, 2, 1); hold on;
+for k = 1:numel(tv_objects)
+  plot(tv_freqs, tv_objects{k}{3}, [tv_linestyles{k} tv_markers{k}], 'MarkerSize', 9, 'LineWidth', 1.8, ...
+       'Color', 'k', 'MarkerFaceColor', tv_facecolors{k}, 'MarkerEdgeColor', 'k', 'DisplayName', tv_objects{k}{1});
+end
+xlabel('Commanded Frequency (Hz)'); ylabel('Corrected Slip (%)');
+title('(a) Corrected Slip vs. Frequency'); legend('Location', 'northeast'); grid on;
+
+subplot(1, 2, 2); hold on;
+for k = 1:numel(tv_objects)
+  plot(tv_freqs, tv_objects{k}{2}, [tv_linestyles{k} tv_markers{k}], 'MarkerSize', 9, 'LineWidth', 1.8, ...
+       'Color', 'k', 'MarkerFaceColor', tv_facecolors{k}, 'MarkerEdgeColor', 'k', 'DisplayName', tv_objects{k}{1});
+end
+xlabel('Commanded Frequency (Hz)'); ylabel('Torque (N\cdotm)');
+title('(b) Torque vs. Frequency'); legend('Location', 'southeast'); grid on;
+
+saveas(fig, fullfile(OUT_DIR, 'fig8_torque_validation.png'));
 close(fig);
 
 printf('\nAll figures written to %s\n', OUT_DIR);

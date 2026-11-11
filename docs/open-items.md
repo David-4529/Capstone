@@ -4,8 +4,8 @@ The data-acquisition and communication platform is built, wired, and validated
 end-to-end on real hardware (STM32 Nucleo-F401RE, RS-485/MAX485 to the VFD, PC-side
 logger). What remains falls into two groups: things that need an action from David
 (Section A) and lower-priority/deferred work (Section B). Every item below is cross-
-checked against the current paper (`Sensorless_Load_Estimation_IEEE_Rev7.docx`) and
-all four deliverables as of Rev 7.
+checked against the current paper (`Sensorless_Load_Estimation_IEEE_Rev8.docx`) and
+all four deliverables as of Rev 8.
 
 ## A. Needs an action from David
 
@@ -14,13 +14,6 @@ Flagged in David's Rev 3 review comments: "This figure needs to be worked, let's
 together on what this should look like." Not auto-edited — the current version (drawn
 by `tools/matlab/generate_figures.m`, boxes for PC Logger/STM32/MAX485/VFD/Motor+Load)
 stays as a placeholder in the paper until we talk through what it should actually show.
-
-### A2. Run the higher-frequency validation tests (6.36–10.00 Hz)
-All calibration and blind-validation data tops out at 6.36 Hz; the drive's confirmed
-safety cap is P01.10 = 10.00 Hz. Section V-E of the paper and Table X are reserved and
-flagged in red, waiting for this data — same procedure as the existing blind-validation
-runs (Section V-C): run a commanded frequency in that range, predict the load live
-with the calibrated model, then reveal and log the actual weight.
 
 ### A3. Source two stock photos for the major deck
 Two slides in `Sensorless_Load_Estimation_Deck_Rev6.pptx` still show a dashed
@@ -46,21 +39,6 @@ but it's a multi-component shot (VFD + motor + control station), not a clean
 per-item identification photo, so it wasn't reused here rather than mislabel it.
 Distinct from A4 (RJ45 jack close-up specifically).
 
-### A6. Pull torque readings from the SERVO Machine Test System to validate against
-David's note: get into the servo machine and pull its torque data as an independent
-check on the slip-based and current-based load estimates. This is a manual reading off
-the machine's own torque display, the same method already used for shaft RPM - it does
-not require solving the torque sensor's Windows driver incompatibility (that stays
-not-pursued for *automated* logging; see Resolved below). Need: torque readings taken
-alongside a normal test session (same known weight, frequency, and run) so they can be
-lined up against that run's predicted load in the paper/decks.
-
-### A7. Motor torque characteristics for the paper
-David's note: add the motor's torque characteristics. Need the specific numbers from
-David - e.g. the Lucas Nülle SE2673-1K7's rated/nameplate torque, breakdown torque, or
-a torque-speed curve from its datasheet - to add as background/equipment context
-(Section III-A). Not fabricating placeholder values; waiting on the source data.
-
 ## B. Lower priority / deferred
 
 ### B1. Lab manual (instructor + student editions)
@@ -77,6 +55,42 @@ of scope for the bare Nucleo without an added Ethernet/WiFi module).
 
 ## Resolved
 
+- **A2. Higher-frequency validation tests (6.36–10.00 Hz)** — descoped, David's call:
+  "don't need this anymore, the torque converter was used to validate the numbers."
+  Flagged at the time and recorded here so the distinction isn't lost: the independent
+  torque-sensor validation that replaces it (Section V-E, Tables X/XI, Fig. 10)
+  technically answers a different question than A2 did — it validates the slip-load
+  relationship and the integrity of the original calibration data *at the frequencies
+  already tested*, via a second independent sensor, not the deployed current-based
+  model's accuracy, and it does not extend validation into the untested 6.36–10.00 Hz
+  range. This is a project-scope decision, not a technical substitution, and both the
+  paper and both decks say so explicitly.
+- **A6. Torque readings from the SERVO Machine Test System** — fully resolved. 12
+  sessions recorded (3 objects × 4 frequencies) and parsed directly from the machine's
+  raw `.acts` capture files. Along the way, found and corrected a real instrumentation
+  bug: the SERVO system's own live slip readout has no link to the VFD's commanded
+  frequency and reads ~100–102% regardless of actual rotation; slip is instead
+  recomputed from the sensor's raw speed channel using this project's own known
+  Ns = 120f/P. Corrected slip agrees with the original Oct. 7 calibration slip to
+  within ~1.9 percentage points on average across all 12 points (Table XI).
+- **A7. Motor torque characteristics for the paper** — resolved via measured data, not
+  a datasheet: confirmed (repo search plus a background web search) that no rated-
+  torque, breakdown-torque, or torque-speed curve for the Lucas Nülle SE2673-1K7 is
+  published anywhere, including Lucas Nülle's own site. The measured SERVO torque/slip
+  data (Table X, Fig. 10) serves as the real, measured torque characterization instead,
+  noted explicitly in the paper (Section III-B) rather than left silent.
+- **IEEE paper converted to strict black-and-white formatting** — all colored text
+  removed (the red STOP banner, red/gray table cells, blue Heading 1/2 styling left
+  over from an earlier color redesign); every MATLAB/Octave-generated figure redrawn in
+  black/grayscale, with datasets distinguished by marker shape and line style instead
+  of color. The MAX485 vendor reference photo and real equipment photographs are kept
+  in color as a deliberate, documented exception (not practical or useful to desaturate
+  a vendor product photo or a real photograph of the rig). The major/11-6/export decks
+  are explicitly exempt from this rule and keep the UNCC green template.
+- **Paper acronym audit** — RTOS, HAL/LL, RPM, CSV, OLS, LOOCV, MAE, and MAPE were all
+  either missing their first-use expansion or used only as bare table-header
+  abbreviations with no spelled-out definition anywhere in the body text; all now
+  expanded at first use.
 - **Motor shaft / motor-side pulley bore** — resolved by the actual build: the
   purchased and installed GT2 pulley set (Table II) is 5 mm bore on both the 20T
   (motor) and 60T (drum) sides, confirmed by the completed, tested mechanical rig.
