@@ -317,11 +317,12 @@ close(fig);
 % off the sensor and needs no such correction.
 % ============================================================================
 tv_freqs = [1.39, 2.44, 4.85, 6.36];
-% object, torque (N*m) by freq, corrected slip (%) by freq
+% object, torque (mN*m, engineering-notation SI prefix - raw values were
+% sub-0.03 N*m, awkward with leading zeros) by freq, corrected slip (%) by freq
 tv_objects = {
-  {'Plastic housing (0.32 kg)', [0.02892, 0.02884, 0.02802, 0.02891], [40.29, 19.99, 6.41, 5.88]}, ...
-  {'Pliers (0.58 kg)',          [0.00979, 0.02875, 0.02798, 0.02829], [35.37, 23.50, 6.49, 7.16]}, ...
-  {'Metal housing (1.46 kg)',   [0.02822, 0.02907, 0.02851, 0.02775], [57.37, 30.91, 9.03, 9.75]}  ...
+  {'Plastic housing (0.32 kg)', [28.92, 28.84, 28.02, 28.91], [40.29, 19.99, 6.41, 5.88]}, ...
+  {'Pliers (0.58 kg)',          [9.79, 28.75, 27.98, 28.29], [35.37, 23.50, 6.49, 7.16]}, ...
+  {'Metal housing (1.46 kg)',   [28.22, 29.07, 28.51, 27.75], [57.37, 30.91, 9.03, 9.75]}  ...
 };
 tv_markers = {'o', 's', '^'};
 tv_linestyles = {'-', '--', '-.'};
@@ -342,7 +343,7 @@ for k = 1:numel(tv_objects)
   plot(tv_freqs, tv_objects{k}{2}, [tv_linestyles{k} tv_markers{k}], 'MarkerSize', 9, 'LineWidth', 1.8, ...
        'Color', 'k', 'MarkerFaceColor', tv_facecolors{k}, 'MarkerEdgeColor', 'k', 'DisplayName', tv_objects{k}{1});
 end
-xlabel('Commanded Frequency (Hz)'); ylabel('Torque (N\cdotm)');
+xlabel('Commanded Frequency (Hz)'); ylabel('Torque (mN\cdotm)');
 title('(b) Torque vs. Frequency'); legend('Location', 'southeast'); grid on;
 
 saveas(fig, fullfile(OUT_DIR, 'fig8_torque_validation.png'));

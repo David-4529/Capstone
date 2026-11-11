@@ -4,8 +4,8 @@ The data-acquisition and communication platform is built, wired, and validated
 end-to-end on real hardware (STM32 Nucleo-F401RE, RS-485/MAX485 to the VFD, PC-side
 logger). What remains falls into two groups: things that need an action from David
 (Section A) and lower-priority/deferred work (Section B). Every item below is cross-
-checked against the current paper (`Sensorless_Load_Estimation_IEEE_Rev8.docx`) and
-all four deliverables as of Rev 8.
+checked against the current paper (`Sensorless_Load_Estimation_IEEE_Rev9.docx`) and
+all four deliverables as of Rev 9.
 
 ## A. Needs an action from David
 
@@ -55,6 +55,20 @@ of scope for the bare Nucleo without an added Ethernet/WiFi module).
 
 ## Resolved
 
+- **3-sig-fig / units / engineering-notation pass (Rev 9)** — every measured or
+  derived number in the paper and all three decks (Tables VI, VII, VIII, IX, X, XI)
+  standardized to 3 significant figures using the most precise available source data
+  (raw `groups.csv` files, the regression fit, and the `.acts` torque captures), not
+  just re-padded display strings; a stale, previously-corrected data error (the 4.85 Hz
+  down-direction current in the 11/6 deck's baseline table, "0.761 A") was caught and
+  fixed to match the rest of the project in the process. Every table header now states
+  its unit except genuinely unitless quantities (r², n, counts). Torque is now reported
+  in engineering-notation mN·m instead of N·m, since the raw values (0.0098–0.0291 N·m)
+  were awkward with leading zeros; this cleaned up Table X/XI and Fig. 10 in the paper,
+  both decks, and the export deck. Exact configured VFD parameters (e.g. 208.0 V,
+  10.00 Hz) and nominal catalog/CAD dimensions were deliberately left at their own
+  genuine resolution rather than forced to 3 figures, since that would either discard
+  real information or fabricate precision that isn't there.
 - **A2. Higher-frequency validation tests (6.36–10.00 Hz)** — descoped, David's call:
   "don't need this anymore, the torque converter was used to validate the numbers."
   Flagged at the time and recorded here so the distinction isn't lost: the independent
