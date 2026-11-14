@@ -1,11 +1,12 @@
 # Open Items
 
 The data-acquisition and communication platform is built, wired, and validated
-end-to-end on real hardware (STM32 Nucleo-F401RE, RS-485/MAX485 to the VFD, PC-side
+end-to-end on real hardware (STM32 Nucleo-F401RE, RS-485 transceiver to the VFD, PC-side
 logger). What remains falls into two groups: things that need an action from David
 (Section A) and lower-priority/deferred work (Section B). Every item below is cross-
-checked against the current paper (`Sensorless_Load_Estimation_IEEE_Rev9.docx`) and
-all four deliverables as of Rev 9.
+checked against the current paper (`Sensorless_Load_Estimation_IEEE_Rev11.docx`) and
+all four deliverables as of Rev 11 for the paper (the decks and lab manual are still at
+their Rev 9/pre-review state - explicitly frozen until David reviews the paper).
 
 ## A. Needs an action from David
 
@@ -98,17 +99,12 @@ edits of the paper, not just the passages they were originally flagged on.
   immediately after** - reinforces the existing standing rule; this round caught CNN,
   RTU, and UART missing their expansion despite being used as bare acronyms later.
 
-### A12. Full audit: verify every Rev 9 comment was actually resolved in Rev 10
-David's call, after noticing some Rev 9 comments weren't addressed (comment 284 - the
-"torque converter"/torque sensor IV-B correction - was missed by the first review pass
-and only caught because David asked about it directly in chat, not from a systematic
-check). Rather than trust the selective pass that produced Rev 10, do a full
-comment-by-comment audit once Rev 10 markup/comments come back from David: go through
-all 89 original Rev 9 comment IDs (`word/comments.xml` in the Rev 9 review input,
-cross-referenced against `anchors.txt`/`trackchanges.txt`/`resolved_text.txt` from that
-review) one at a time against the Rev 10 text and confirm each one actually landed -
-not just the ones that happened to get caught. Report back anything still outstanding
-instead of assuming a prior pass covered it.
+### A13. Fig. 5 (RS-485 transceiver signal-mapping diagram) needs David's own rework
+Comment 254 on the Rev 9 markup: "Figure 4 needs work, I need to fix prior to you
+updateing it here" (figure number has since shifted to Fig. 5 after the Rev 11
+renumbering - it's the drawn VFD RJ45 -> transceiver -> STM32 pin-mapping diagram,
+`tools/matlab/generate_figures.m`'s `fig2_rs485_wiring.png`). Left untouched beyond the
+MAX485-label rename (Rev 11) since David said he'd provide the update himself.
 
 ## Standing rules (process)
 
@@ -138,6 +134,65 @@ of scope for the bare Nucleo without an added Ethernet/WiFi module).
 
 ## Resolved
 
+- **A12. Full Rev 9 comment-by-comment audit, Rev 11** — David caught that several Rev 9
+  comments were never actually incorporated into Rev 10 and asked for a real, systematic
+  audit rather than trusting the earlier selective pass. Went through all 89 original
+  Rev 9 comment IDs individually against the Rev 10 text (not just a resolved_text.txt
+  diff, since some comments - like 284 - have no accompanying tracked change at all) and
+  fixed every one found not actually resolved, producing Rev 11:
+  - **A real contradiction**: Section III-B claimed "a torque sensor... was not used in
+    this project... no torque data was recorded" while Section V-C2 (the whole
+    Independent Torque-Based Validation section) exists specifically because that torque
+    sensor *was* used - comment 45's "Wrong, I was able to get the data from it" was
+    correct and had never been applied. Fixed.
+  - **Photos/content marked "Remove this" that were still present**: the duplicate
+    "Photographed nameplates confirming Table I" photo block (comments 43/44), the
+    GT2/drum/QWORK close-up photo block (comment 198), the blind-validation-objects
+    photo block (comment 319, attached directly to the image with no text anchor - easy
+    to miss without checking the raw XML), and both inline `[ACTION ITEM: ...]` brackets
+    in the paper body itself (comment 212 plus the same logic applied to Fig. 1's
+    matching bracket) - all removed; the underlying action items stay tracked here
+    instead (A1, A4).
+  - **"MAX485" renamed to "RS-485 transceiver" throughout** (comments 231/237, repeated
+    twice) - prose, section/table titles, Table III's column header, and both MATLAB-
+    drawn diagrams (Fig. 1's block label, Fig. 5's own diagram text) that still had the
+    old chip name baked into the image itself.
+  - **A systematic figure/table reference audit** (comments 196, 292, 315, 318, plus the
+    existing standing rule): 8 of the paper's 10 figures had no in-text pointer beyond
+    their own caption, only caught by actually counting every "Fig. N" occurrence rather
+    than spot-checking. Added a real pointer sentence for every figure and for Table VII.
+    Two photos (the full test rig, the three calibration objects) were promoted from
+    unnumbered images to properly numbered, referenced figures per comments 196/292.
+  - **Table IX (torque+slip combined, 7 columns) split into two 4-column tables**
+    (Slip, Torque) paired with two split figures, per comment 354's explicit ask to make
+    these "two separate figures" - also resolves comment 348's column-span complaint,
+    which a 7-column table could not have met by reformatting alone.
+  - **New Table I-B (Motor Nameplate Data)** with the motor's real rated voltage/current/
+    power/speed/poles, addressing comments 17 ("doesn't list the nameplate data but
+    rather calls out the make/models") and 38 (table request) together - Table I is
+    renamed "Equipment Identification" to match what it actually contains.
+  - Smaller fixes: P01.02 forward-reference reworded (comment 49); Table IV's verbose
+    "Meaning" cells shortened (comments 272/275-280); the down-direction aside trimmed
+    from the Table V discussion (comment 281); a one-sentence 0 kg lower-bound rationale
+    added before the 1.46 kg upper-bound paragraph (comment 291); the generator/load unit
+    named explicitly as where the SERVO's torque sensor sits (comment 343); the dense
+    VI-A closing paragraph tightened without losing its technical content (comment 363);
+    the two overlapping MAX485/RS-485 explanation paragraphs merged into one (comments
+    238/256); the MAX485 reference photo moved to right after its first mention and
+    resized down (comments 234/255).
+  - Comments confirmed already correctly resolved on inspection (no further change
+    needed): 5, 12, 13, 14, 15, 16, 18, 46, 50-55, 61, 62, 194, 195, 197 (partially - see
+    above), 208, 210, 232, 233, 235, 252, 253, 257, 263 (deferred per David's own
+    standing instruction, not missed), 265, 266, 283, 285, 294-297, 299, 300, 320, 337,
+    342, 349, 352, 355, 356, 358, 361. Comments 311 (unit italics) and 373 (more
+    references) remain intentionally open - see A11 and A10.
+  - Also fixed along the way: a LibreOffice-specific PDF-export bug where the single
+    structurally-last image in a continuous section would silently fail to render
+    (reproduced independent of file content/format - confirmed by swapping in a known-
+    good image at that position and watching it also disappear); worked around by never
+    ending a one-column section on an image when a table can trail it instead. And a
+    table-header-split-across-a-page-break defect (same family as the one already noted
+    below from Rev 6), fixed by setting `cantSplit` on every table row.
 - **Down-direction (lowering) slip/current data removed from Table VI, Fig. 6, and the
   model entirely (Rev 10)** — three of David's own Rev 9 comments on Table VI/Fig. 6
   contradicted each other about whether down-direction data should be included. David's
