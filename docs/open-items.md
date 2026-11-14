@@ -59,6 +59,15 @@ the current 8 - they don't need to be cited in-body, just listed as references. 
 real candidate sources (not fabricated) - likely more induction-motor/VFD/sensorless-
 estimation literature in the same vein as refs [2]/[3]/[8].
 
+### A11. Italicize every unit in running text (Rev 10 follow-up)
+Flagged while building Rev 10: the "every unit mentioned in running text must be
+italicized" standing rule (below) was not applied in that pass. `build_paper.js`'s
+`body()` helper only supports single-run paragraphs, so retrofitting ~100 paragraphs'
+worth of mixed-run text (plain prose with italic units spliced in mid-sentence) needs a
+small helper rewrite first, not a one-off text edit - doing it piecemeal just on the
+sentences touched in Rev 10 would have looked like an inconsistency rather than a rule.
+David's call: hold this for the next paper revision rather than block Rev 10 on it.
+
 ## Standing rules (style/formatting, apply going forward)
 
 Surfaced in the Rev 9 Word review (comments + tracked changes); apply to all future
