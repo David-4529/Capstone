@@ -110,6 +110,18 @@ review) one at a time against the Rev 10 text and confirm each one actually land
 not just the ones that happened to get caught. Report back anything still outstanding
 instead of assuming a prior pass covered it.
 
+## Standing rules (process)
+
+- **Any tracked-changes/comments review must be a complete, full audit - never a
+  selective pass.** David's instruction after catching that comment 284 slipped through
+  the first Rev 9 review pass: "add a rule to always do a complete and full aduit of
+  provided document of track changes and comments." Concretely: when reviewing a marked-
+  up document, go through every single comment and every tracked-change operation
+  individually and account for it (resolved / not yet resolved / superseded and why) -
+  don't rely on skimming for the ones that look most significant, and don't report a
+  review as "done" without having actually checked each item against the current state
+  of the document. See A12 for the audit this rule itself came from.
+
 ## B. Lower priority / deferred
 
 ### B1. Lab manual (instructor + student editions)
