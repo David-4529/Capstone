@@ -19,24 +19,33 @@
 %   fig1_block_diagram.png        Fig. 1  (schematic, no data - drawn, not plotted)
 %   (not produced here)           Fig. 2  (Drum_Rev_0 CAD render - see
 %                                           paper_rev0/build_paper.js's drum_cad.png)
-%   fig2_rs485_wiring.png         Fig. 3  (schematic, no data - drawn, not plotted;
+%   fig2_rs485_wiring.png         Fig. 4  (schematic, no data - drawn, not plotted;
 %                                           filename says fig2 because it was authored
 %                                           before the drum render's place in the
 %                                           document order was accounted for - the
-%                                           figure NUMBER used in the paper is 3)
-%   fig4_baseline_combined.png    Fig. 4
-%   fig5_calibration_fit.png      Fig. 5
-%   fig6_blind_validation.png     Fig. 6
-%   fig7_loocv_model_comparison.png Fig. 7
-%   fig8_torque_validation.png    Fig. 10 (independent torque-sensor validation)
+%                                           figure NUMBER used in the paper is 4)
+%   (not produced here)           Fig. 5  (raw USART2 screenshot - see
+%                                           paper_rev0/assets/raw_csv_screenshot.png)
+%   fig4_baseline_combined.png    Fig. 6  (no-load baseline, up direction only - Rev 10
+%                                           dropped down-direction data entirely; see
+%                                           note below)
+%   fig5_calibration_fit.png      Fig. 7
+%   fig6_blind_validation.png     Fig. 8
+%   fig7_loocv_model_comparison.png Fig. 10
+%   fig8_torque_validation.png    Fig. 9  (independent torque-sensor validation; Rev 10
+%                                           converted its torque axis from mN*m to N*m)
 %
-% Fig. 1/2 are drawn schematics (wiring per docs/wiring.md + Table III). Fig. 4/5 are
+% Fig. 1/2 are drawn schematics (wiring per docs/wiring.md + Table III). Fig. 6/7 are
 % computed directly from the real groups.csv files checked into the repo (genuine
-% recomputation, not hardcoded). Fig. 6/7 reproduce the already-reported blind-
-% validation and LOOCV results (Tables VIII/IX of the paper) - those specific held-out
+% recomputation, not hardcoded). Fig. 8/10 reproduce the already-reported blind-
+% validation and LOOCV results (Tables VIII/XI of the paper) - those specific held-out
 % sessions were analyzed ad hoc and are not re-derivable from a groups.csv in this
 % repo, so their numbers are transcribed here from the paper with a comment at each
 % one, not recomputed.
+%
+% Rev 10: down-direction (lowering) slip/current data removed from Fig. 6 entirely -
+% the motor has no dynamic braking, so down-direction readings were never physically
+% meaningful and were never used in the paper's model (David's call, Rev 9 review).
 
 clear; clc; close all;
 
@@ -177,51 +186,41 @@ saveas(fig, fullfile(OUT_DIR, 'fig2_rs485_wiring.png'));
 close(fig);
 
 % ============================================================================
-% Figure 4: No-load baseline - slip and current vs. frequency, two panels
-% (Fig. 3 is the Drum_Rev_0 CAD render, produced separately - not by this script)
+% Figure 6: No-load baseline - slip and current vs. frequency, two panels,
+% up direction only (Rev 10: down-direction dropped entirely - no dynamic
+% braking on this motor, so down-direction readings were never physically
+% meaningful and were never used in the paper's model).
+% (Fig. 2 is the Drum_Rev_0 CAD render, produced separately - not by this script)
 % ============================================================================
 fig = figure('Visible', 'off', 'Position', [0 0 1300 520]);
 is_noload = (total_kg == 0);
 
 % Plot against the fixed 4-point frequency grid, NaN-filled where no no-load
-% run exists at that freq/direction, so a missing point breaks the line
-% (no false interpolation) instead of silently connecting across the gap.
-grid_slip_up = nan(1, numel(TARGET_FREQS)); grid_slip_down = grid_slip_up;
-grid_cur_up = grid_slip_up; grid_cur_down = grid_slip_up;
+% run exists at that freq, so a missing point breaks the line (no false
+% interpolation) instead of silently connecting across the gap.
+grid_slip_up = nan(1, numel(TARGET_FREQS));
+grid_cur_up = grid_slip_up;
 for k = 1:numel(TARGET_FREQS)
   tf = TARGET_FREQS(k);
   mu = is_noload & strcmp(direction, 'up') & (bucket == tf);
-  md = is_noload & strcmp(direction, 'down') & (bucket == tf);
   if any(mu); grid_slip_up(k) = slip_mean(find(mu, 1)); grid_cur_up(k) = current_mean(find(mu, 1)); end
-  if any(md); grid_slip_down(k) = slip_mean(find(md, 1)); grid_cur_down(k) = current_mean(find(md, 1)); end
 end
 
-% No-load down @ 4.85 Hz is not in any groups.csv (the analysis pipeline only
-% keeps points with a matching steady current row), but it IS a real, sourced
-% reading: Baseline_Test_Data_2026-10-05.docx Section 5.4 records a shaft RPM
-% of 141 read by eye for that down run (sync RPM assumed equal to the one
-% logged run that session, 145.4), giving slip = 0.030. No current was ever
-% logged for that specific run (the doc marks it "-"), so the current panel
-% correctly keeps its gap here while the slip panel does not.
-grid_slip_down(TARGET_FREQS == 4.85) = 0.030;
-
 subplot(1, 2, 1); hold on;
-plot(TARGET_FREQS, grid_slip_up, '-o', 'LineWidth', 2, 'MarkerSize', 8, 'Color', 'k', 'MarkerFaceColor', 'k', 'DisplayName', 'Up (lifting)');
-plot(TARGET_FREQS, grid_slip_down, '--s', 'LineWidth', 2, 'MarkerSize', 8, 'Color', 'k', 'MarkerFaceColor', 'k', 'DisplayName', 'Down (lowering)');
+plot(TARGET_FREQS, grid_slip_up, '-o', 'LineWidth', 2, 'MarkerSize', 8, 'Color', 'k', 'MarkerFaceColor', 'k');
 xlabel('Commanded Frequency (Hz)'); ylabel('Slip (fractional)');
-title('(a) Slip vs. Frequency'); legend('Location', 'northeast'); grid on;
+title('(a) Slip vs. Frequency'); grid on;
 
 subplot(1, 2, 2); hold on;
-plot(TARGET_FREQS, grid_cur_up, '-o', 'LineWidth', 2, 'MarkerSize', 8, 'Color', 'k', 'MarkerFaceColor', 'k', 'DisplayName', 'Up (lifting)');
-plot(TARGET_FREQS, grid_cur_down, '--s', 'LineWidth', 2, 'MarkerSize', 8, 'Color', 'k', 'MarkerFaceColor', 'k', 'DisplayName', 'Down (lowering)');
+plot(TARGET_FREQS, grid_cur_up, '-o', 'LineWidth', 2, 'MarkerSize', 8, 'Color', 'k', 'MarkerFaceColor', 'k');
 xlabel('Commanded Frequency (Hz)'); ylabel('Output Current (A)');
-title('(b) Output Current vs. Frequency'); legend('Location', 'northwest'); grid on;
+title('(b) Output Current vs. Frequency'); grid on;
 
 saveas(fig, fullfile(OUT_DIR, 'fig4_baseline_combined.png'));
 close(fig);
 
 % ============================================================================
-% Figure 5: Calibrated model - current vs load, up-direction, one fit per frequency
+% Figure 7 (paper Fig. 7): Calibrated model - current vs load, up-direction, one fit per frequency
 % ============================================================================
 fig = figure('Visible', 'off', 'Position', [0 0 1000 680]);
 hold on;
@@ -253,7 +252,7 @@ saveas(fig, fullfile(OUT_DIR, 'fig5_calibration_fit.png'));
 close(fig);
 
 % ============================================================================
-% Figure 6: Blind validation - predicted vs. actual
+% Figure 8 (paper Fig. 8): Blind validation - predicted vs. actual
 % Transcribed from Table VIII of the paper (Resistor 1/2, T-housing - these
 % sessions' raw data was analyzed ad hoc and is not checked into results/ as a
 % groups.csv).
@@ -279,8 +278,8 @@ saveas(fig, fullfile(OUT_DIR, 'fig6_blind_validation.png'));
 close(fig);
 
 % ============================================================================
-% Figure 7: LOOCV error by model form
-% Transcribed from Table IX of the paper (leave-one-out cross-validation across
+% Figure 10 (paper Fig. 10): LOOCV error by model form
+% Transcribed from Table XI of the paper (leave-one-out cross-validation across
 % all 17 real calibration points - the exact procedure tools/model/fit_model.py
 % uses; reproducing it here would require porting that fitting/CV logic to Octave,
 % not just replotting its output, so the reported numbers are used directly).
@@ -292,7 +291,7 @@ fig = figure('Visible', 'off', 'Position', [0 0 900 620]);
 bar(mape, 'FaceColor', [0.75 0.75 0.75], 'EdgeColor', 'k', 'LineWidth', 1.2);
 set(gca, 'XTickLabel', model_forms, 'Position', [0.10 0.24 0.86 0.62]);
 ylabel('MAPE (%)');
-title('LOOCV Error by Model Form - More Complexity Does Not Help');
+title('LOOCV Error by Model Form');
 ylim([0 70]); grid on;
 for i = 1:numel(mape)
   text(i, mape(i) + 1.5, sprintf('%.1f%%', mape(i)), 'HorizontalAlignment', 'center');
@@ -301,28 +300,26 @@ saveas(fig, fullfile(OUT_DIR, 'fig7_loocv_model_comparison.png'));
 close(fig);
 
 % ============================================================================
-% Figure 10: Independent torque-sensor validation (SERVO Machine Test System)
+% Figure 9 (paper Fig. 9): Independent torque-sensor validation (SERVO Machine Test System)
 % Transcribed from raw ActiveServo (.acts) capture files recorded directly off
 % the Lucas Nulle SERVO Machine Test System's own torque/speed sensor in
 % Nov 2026 - not in results/*/analysis/groups.csv, so not re-derivable from
 % this repo's normal pipeline (same situation as Fig. 6/7). 12 captures total:
 % 3 known objects x the same 4 commanded frequencies used throughout
-% calibration, ~20-30 marker points per capture.
+% calibration, ~20-30 marker points per capture. Current is not among the
+% channels this sensor captures (speed/slip and torque only).
 %
-% The SERVO system has no link to the VFD's commanded frequency, so its own
-% live "s/%" slip readout assumes the wrong (default) synchronous speed and is
-% unusable as-is. Slip shown here is recomputed from the sensor's raw speed
-% channel using this project's own known Ns = 120*f/P for whatever frequency
-% was actually commanded - the correct, usable number. Torque is read directly
-% off the sensor and needs no such correction.
+% Slip shown here is the sensor's raw speed channel converted to slip using
+% this project's own known Ns = 120*f/P for whatever frequency was actually
+% commanded. Torque is read directly off the sensor.
 % ============================================================================
 tv_freqs = [1.39, 2.44, 4.85, 6.36];
-% object, torque (mN*m, engineering-notation SI prefix - raw values were
-% sub-0.03 N*m, awkward with leading zeros) by freq, corrected slip (%) by freq
+% object, torque (N*m; converted from the raw mN*m sensor readings) by freq,
+% slip (%) by freq
 tv_objects = {
-  {'Plastic housing (0.32 kg)', [28.92, 28.84, 28.02, 28.91], [40.29, 19.99, 6.41, 5.88]}, ...
-  {'Pliers (0.58 kg)',          [9.79, 28.75, 27.98, 28.29], [35.37, 23.50, 6.49, 7.16]}, ...
-  {'Metal housing (1.46 kg)',   [28.22, 29.07, 28.51, 27.75], [57.37, 30.91, 9.03, 9.75]}  ...
+  {'Plastic housing (0.32 kg)', [0.02892, 0.02884, 0.02802, 0.02891], [40.29, 19.99, 6.41, 5.88]}, ...
+  {'Pliers (0.58 kg)',          [0.00979, 0.02875, 0.02798, 0.02829], [35.37, 23.50, 6.49, 7.16]}, ...
+  {'Metal housing (1.46 kg)',   [0.02822, 0.02907, 0.02851, 0.02775], [57.37, 30.91, 9.03, 9.75]}  ...
 };
 tv_markers = {'o', 's', '^'};
 tv_linestyles = {'-', '--', '-.'};
@@ -335,15 +332,15 @@ for k = 1:numel(tv_objects)
   plot(tv_freqs, tv_objects{k}{3}, [tv_linestyles{k} tv_markers{k}], 'MarkerSize', 9, 'LineWidth', 1.8, ...
        'Color', 'k', 'MarkerFaceColor', tv_facecolors{k}, 'MarkerEdgeColor', 'k', 'DisplayName', tv_objects{k}{1});
 end
-xlabel('Commanded Frequency (Hz)'); ylabel('Corrected Slip (%)');
-title('(a) Corrected Slip vs. Frequency'); legend('Location', 'northeast'); grid on;
+xlabel('Commanded Frequency (Hz)'); ylabel('Slip (%)');
+title('(a) Slip vs. Frequency'); legend('Location', 'northeast'); grid on;
 
 subplot(1, 2, 2); hold on;
 for k = 1:numel(tv_objects)
   plot(tv_freqs, tv_objects{k}{2}, [tv_linestyles{k} tv_markers{k}], 'MarkerSize', 9, 'LineWidth', 1.8, ...
        'Color', 'k', 'MarkerFaceColor', tv_facecolors{k}, 'MarkerEdgeColor', 'k', 'DisplayName', tv_objects{k}{1});
 end
-xlabel('Commanded Frequency (Hz)'); ylabel('Torque (mN\cdotm)');
+xlabel('Commanded Frequency (Hz)'); ylabel('Torque (N\cdotm)');
 title('(b) Torque vs. Frequency'); legend('Location', 'southeast'); grid on;
 
 saveas(fig, fullfile(OUT_DIR, 'fig8_torque_validation.png'));

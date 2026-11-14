@@ -105,6 +105,49 @@ of scope for the bare Nucleo without an added Ethernet/WiFi module).
 
 ## Resolved
 
+- **Down-direction (lowering) slip/current data removed from Table VI, Fig. 6, and the
+  model entirely (Rev 10)** — three of David's own Rev 9 comments on Table VI/Fig. 6
+  contradicted each other about whether down-direction data should be included. David's
+  resolution: remove it entirely, since the motor has no dynamic braking and
+  down-direction current/slip readings were never physically meaningful or actually used
+  in the paper's current-based model. Table VI is now up-direction only (Freq/Slip/
+  Current), Fig. 6 regenerated as a single-series two-panel plot, and
+  `generate_figures.m` updated to match.
+- **MRAS (Model Reference Adaptive System) discussion removed from Related Work
+  (Rev 10)** — David's comment ("Need to expand on what these are or remove them if not
+  needed") resolved as: remove. The Utrata and Rolek [2] MRAS-speed-estimator sentence
+  was cut from Section II; reference [2] stays in the References list uncited,
+  consistent with the A10 precedent that extra references don't need an in-body
+  citation.
+- **Blind Validation and Independent Torque-Based Validation merged under one
+  Validation section (Rev 10)** — David's comment on the torque-validation heading
+  asked whether it could be grouped with Blind Validation "within the same chapter."
+  Resolved as: Section V-C ("Validation") now contains two subsections, V-C1 (Blind
+  Validation) and V-C2 (Independent Torque-Based Validation); the "Is This a Modeling
+  Problem?" (LOOCV) section moved after both, keeping its own letter (V-D) but its
+  table/figure renumbered (Table IX→XI, Fig. 9→10) to stay in document order. All
+  cross-references to the old V-C/V-D/V-E throughout the paper were updated to match.
+- **Bill of Materials (Table II) simplified to a single real Price/Cost per row
+  (Rev 10)** — the prorated-cost framework (pack price vs. fraction-of-pack-used cost)
+  was being removed per David's tracked edits, but left two rows (timing belt, RS-485
+  module) with a blank Price cell and a stale "$99.34 vs. $117.14" comparison sentence.
+  David's call: show one real price per row (what was actually paid for that purchase,
+  not prorated). New total out-of-pocket cost is $117.14 (every component at its actual
+  purchase price); reference cost including the lab-provided STM32/VFD at list price is
+  roughly $385.
+- **Section IV-B shaft-RPM-reading scope and validation-narrative trims (Rev 10)** —
+  three follow-up fixes from David after the main Rev 9 review pass: (1) Section IV-B's
+  "only ever taken by hand" claim about the shaft RPM reading now explicitly scopes to
+  this project's own calibration/deployment workflow and cross-references the
+  independent SERVO-based validation (Section V-C2), which obtained slip electronically
+  instead, with no hand reading involved; (2) the "100-102%"/raw-channel-correction
+  explanation was removed from Section V-C2 entirely ("takes away from the main purpose
+  of the paper," David's words) — the section now presents Table IX directly without
+  narrating why the SERVO's own slip readout needed correction, and "Corrected" was
+  dropped from Table X's header/title for the same reason; (3) the Conclusion
+  (Section VII) was expanded to explicitly state what the independent torque-based
+  validation confirmed (the integrity of the slip-load relationship), not just the
+  one-clause mention it had before.
 - **3-sig-fig / units / engineering-notation pass (Rev 9)** — every measured or
   derived number in the paper and all three decks (Tables VI, VII, VIII, IX, X, XI)
   standardized to 3 significant figures using the most precise available source data
