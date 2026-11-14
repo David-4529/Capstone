@@ -39,6 +39,56 @@ but it's a multi-component shot (VFD + motor + control station), not a clean
 per-item identification photo, so it wasn't reused here rather than mislabel it.
 Distinct from A4 (RJ45 jack close-up specifically).
 
+### A8. Real motor torque/breakdown-torque curves from Lucas Nülle
+Surfaced in the Rev 9 Word review (comment on Section III-B): David says he has his own
+action to pull real torque-speed curve data for the SE2673-1K7 (not from a published
+datasheet, which doesn't exist - see A7 Resolved below). Once he has it, the paper's
+"no published spec" framing in Section III-B needs updating to cite/plot the real curve
+instead.
+
+### A9. Confirm the PPT limitations slide covers the cable-travel/time discussion
+David's call: the cable-length/19.6 s safety-margin discussion is being pulled out of
+the paper's VFD-parameters prose (it reads as a design footnote there, not a result) and
+instead needs to live in a Limitations discussion - David believes this is already in
+his PowerPoint slides somewhere and wants that confirmed rather than rewritten from
+scratch in the paper.
+
+### A10. Add ~5 more applicable IEEE reference entries
+David's call: the References list should carry roughly 5 more applicable sources beyond
+the current 8 - they don't need to be cited in-body, just listed as references. Needs
+real candidate sources (not fabricated) - likely more induction-motor/VFD/sensorless-
+estimation literature in the same vein as refs [2]/[3]/[8].
+
+## Standing rules (style/formatting, apply going forward)
+
+Surfaced in the Rev 9 Word review (comments + tracked changes); apply to all future
+edits of the paper, not just the passages they were originally flagged on.
+
+- **Say "VFD," not "drive."** Applies throughout the paper (and by extension the other
+  deliverables) wherever the drive itself is meant, not a disk/mechanism sense of "drive."
+- **Don't repeat manufacturer/model names in prose.** Keep body text high-level ("the
+  custom hoist," "the motor," "the generator") and let the equipment table (Table I)
+  carry specific make/model/part-number detail - don't restate it inline every time a
+  component is mentioned.
+- **Every unit mentioned in running text must be italicized** (e.g. *kg*, *A*, *Hz*),
+  not just units inside tables/equations.
+- **No table may span both IEEE columns.** Every table needs to fit within a single
+  column's width - reformat (narrower columns, smaller font, or split tables) rather
+  than let a wide table bridge both columns.
+- **Don't call out specific calendar dates in body text** (e.g. "Oct. 24, 2026") -
+  describe sessions by what they were, not when they happened.
+- **Torque is reported in N·m, not mN·m.** Reverses the Rev 9 engineering-notation
+  decision specifically per David's instruction - applies to every mN·m instance
+  (Table X/XI headers and values, Fig. 10 axis label, in-text mentions) across the
+  paper, decks, and `generate_figures.m`.
+- **Every figure and table kept in the paper must be referenced by number somewhere in
+  the body text** - before cutting or keeping a figure/table, confirm there's a sentence
+  that actually points to it (e.g. "(Fig. 8)" / "(Table VII)"); orphaned figures/tables
+  get removed or given a proper callout.
+- **Spell out every acronym in full at first use, with the acronym in parentheses
+  immediately after** - reinforces the existing standing rule; this round caught CNN,
+  RTU, and UART missing their expansion despite being used as bare acronyms later.
+
 ## B. Lower priority / deferred
 
 ### B1. Lab manual (instructor + student editions)
