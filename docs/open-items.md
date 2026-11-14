@@ -98,6 +98,18 @@ edits of the paper, not just the passages they were originally flagged on.
   immediately after** - reinforces the existing standing rule; this round caught CNN,
   RTU, and UART missing their expansion despite being used as bare acronyms later.
 
+### A12. Full audit: verify every Rev 9 comment was actually resolved in Rev 10
+David's call, after noticing some Rev 9 comments weren't addressed (comment 284 - the
+"torque converter"/torque sensor IV-B correction - was missed by the first review pass
+and only caught because David asked about it directly in chat, not from a systematic
+check). Rather than trust the selective pass that produced Rev 10, do a full
+comment-by-comment audit once Rev 10 markup/comments come back from David: go through
+all 89 original Rev 9 comment IDs (`word/comments.xml` in the Rev 9 review input,
+cross-referenced against `anchors.txt`/`trackchanges.txt`/`resolved_text.txt` from that
+review) one at a time against the Rev 10 text and confirm each one actually landed -
+not just the ones that happened to get caught. Report back anything still outstanding
+instead of assuming a prior pass covered it.
+
 ## B. Lower priority / deferred
 
 ### B1. Lab manual (instructor + student editions)
