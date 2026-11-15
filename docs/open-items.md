@@ -82,9 +82,23 @@ edits of the paper, not just the passages they were originally flagged on.
   component is mentioned.
 - **Every unit mentioned in running text must be italicized** (e.g. *kg*, *A*, *Hz*),
   not just units inside tables/equations.
-- **No table may span both IEEE columns.** Every table needs to fit within a single
-  column's width - reformat (narrower columns, smaller font, or split tables) rather
-  than let a wide table bridge both columns.
+- **No figure, table, or reference entry may span both IEEE columns.** Broadened in the
+  Rev 11 review (comments 61-78 flagged nearly every figure/table from Section III-D
+  onward) - every figure and table needs to fit within a single column's width, full
+  stop. Root cause found in `build_paper.js`: large stretches of the document (the whole
+  Results section, several figure/photo blocks in III-D/III-F) were deliberately
+  switched to a one-column (full page width) section layout to dodge short, awkward
+  two-column breaks - every figure/table inside one of those stretches is, by
+  construction, full-page-width and therefore spans what should be both columns. The
+  real fix is restoring genuine two-column layout for the whole paper and sizing every
+  figure/table to the actual single-column width (`CONTENT_W` minus `COL_GAP`, halved -
+  see `build_paper.js`'s own constants), handling any short-stretch pagination
+  awkwardness with paragraph/row "keep together" properties instead of abandoning
+  columns - not just shrinking individual images while leaving the section single-column.
+- **Spell out every acronym's expansion in Title Case** (e.g. "Variable Frequency
+  Drive," not "variable frequency drive") **before the parenthesized acronym.** New
+  rule, Rev 11 review (comment 1): "All acrynms spelled out, the first letter needs to
+  be captilzed."
 - **Don't call out specific calendar dates in body text** (e.g. "Oct. 24, 2026") -
   describe sessions by what they were, not when they happened.
 - **Torque is reported in N·m, not mN·m.** Reverses the Rev 9 engineering-notation
