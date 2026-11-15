@@ -139,6 +139,16 @@ renumbering - it's the drawn VFD RJ45 -> transceiver -> STM32 pin-mapping diagra
 `tools/matlab/generate_figures.m`'s `fig2_rs485_wiring.png`). Left untouched beyond the
 MAX485-label rename (Rev 11) since David said he'd provide the update himself.
 
+### A15. Rod-count contradiction: "a single rod" (prose) vs. qty 2 (Table V BOM)
+Surfaced by an external technical audit of Rev 12 (finding T13), confirmed real and
+not touched: Section III-C's prose says "a single 8 mm hardened steel linear rod is
+mounted between two square pillars," but Table V (Bill of Materials) lists "8 mm x
+800 mm linear rod" at Qty Used = 2. This is a direct, verifiable contradiction within
+the paper itself. Not guessed at either direction - need David to confirm whether the
+actual rig uses one rod or two, and if two, how they're actually arranged (e.g. one
+per side, a spare, cut from stock), so the prose can be corrected to match reality
+rather than the other way around.
+
 ## Standing rules (process)
 
 - **Any tracked-changes/comments review must be a complete, full audit - never a
@@ -165,7 +175,115 @@ serial stream onto something that can host a web page — a small script on the 
 already running the serial monitor, or networking added to the controller itself (out
 of scope for the bare Nucleo without an added Ethernet/WiFi module).
 
+### B3. Mass-to-torque mechanical model
+Surfaced by an external technical audit of Rev 12 (finding T11): the paper reports
+suspended mass (kg) as "load" but the motor physically responds to shaft torque.
+Deriving a real mechanical model mapping suspended mass to motor shaft torque (cable
+radius/drum effective diameter, pulley mechanical advantage, the 20T/60T (3:1) belt
+reduction, and mechanical losses) is legitimate and would strengthen the paper, but
+it's a substantial new piece of analysis in its own right, not a wording fix - logged
+here rather than attempted inline during a comment-response pass.
+
 ## Resolved
+
+- **Rev 14: implemented the external technical/editorial audit's "comply" items** —
+  David forwarded a detailed outside review of Rev 12 (30 numbered technical findings
+  T01-T30, 15 editorial items E01-E15, plus a title/section-rename proposal) and asked
+  me to either comply or defend. I gave David my verdict on each item directly in chat
+  first (what I'd implement vs. push back on and why); this entry covers what was
+  actually implemented in `build_paper.js`, producing Rev 14.
+  - **Real table-numbering problem fixed (E02, independently confirmed by both this
+    audit and a prior internal note)**: "Table II-B" and "Table I-C" appeared out of
+    appearance order. All 15 tables renumbered I-XV in true first-appearance order
+    (Equipment ID, Motor Nameplate Data, Operator Control Station Wiring, VFD
+    Parameters, Bill of Materials, RS-485 Signal Mapping, Raw Logger Row Reference,
+    Example Logger Summary, No-Load Baseline, Current-Based Model, Blind Validation
+    Results, Measured Slip, Measured Torque, Slip vs. Original Calibration, LOOCV
+    Error) and every cross-reference throughout the paper updated to match.
+  - **"C1"/"C2" sub-subsection labels replaced with real IEEE "1)"/"2)" style** (E01) -
+    added a new `h3()` heading helper; "V-C1"/"V-C2" cross-references throughout the
+    paper now read "Section V-C, Part 1"/"Part 2".
+  - **A real factual BOM error fixed, worse than what the audit itself flagged**: "Total
+    out-of-pocket cost... was $385" was wrong - that sum includes the STM32 ($36.19)
+    and VFD ($231.66), which the paper itself says were already in the lab and not
+    purchased. True out-of-pocket is $117.14; $385 is the full replacement-cost figure.
+    Fixed to state both numbers correctly and concisely. Also resolved the audit's
+    separate Price-vs-Cost ambiguity (T12) by dropping the redundant Cost column -
+    Table V's "Total Price" is now unambiguously the line's real paid total.
+  - **T08 (slip "zero at no load")**: reworded against the no-load baseline table's own
+    nonzero values (5.43%-27.0%) - now "near zero under an idealized no-load condition,"
+    not "zero."
+  - **T07 (dynamic-braking wording)**: "the motor lacks dynamic braking" → describes the
+    actual rig configuration (no braking resistor installed/configured), not a
+    categorical hardware limitation - the GS23-21P0 drive does support it generally.
+  - **T06 (Abstract overclaimed validation scope)**: "further validation of the model
+    was confirmed via an independent torque sensor" → "an independent torque sensor
+    separately corroborated the underlying slip-load relationship," matching the scope
+    the body text already correctly used.
+  - **T17 (Abstract validation-count wording)**: "three independent, blind validation
+    tests" → "three blinded objects at six operating points," matching Table XI.
+  - **T03 (4.85 Hz baseline/model mismatch)**: verified by direct arithmetic
+    (7.29×0.814−5.57 = +0.364 kg, not 0) and explained in-text as a direct consequence
+    of that frequency's already-reported low r² (0.508), not a separate-session issue.
+  - **T04 (current-span "0.1 A" claim)**: recomputed from the real per-frequency
+    current ranges in `tools/model/load_model.json` (0.066-0.153 A across the four
+    frequencies, not a single fixed 0.1 A) and restated with the real numbers.
+  - **T09/T14 (Limitations, VI-B)**: added the real shaft-speed-resolution limit at
+    1.39 Hz (±1 RPM ≈ ±2.4 slip percentage points, from Ns=41.7 RPM) and showed the
+    64.0 in / 19.6 s cable-travel figure's derivation (~1.96 in effective drum
+    circumference per revolution) explicitly instead of leaving it implicit.
+  - **T10 (Discussion's "noise floor" closing sentence)**: softened from an assertion
+    ("that noise floor is the binding constraint") to "is consistent with a binding
+    signal-to-noise floor" - the rest of Section VI-A's hedged argument was left as-is.
+  - **T16 (why n varies 3-5 across frequencies)** and **T18 (1.39 Hz pliers torque
+    outlier)**: both given one-sentence explanations tied to already-documented causes
+    (incomplete clean runs; the same belt-traction margin issue noted in Limitations).
+  - **T19 ("independent sensor on different hardware" overstated)**: reworded toward
+    corroboration on a shared mechanical path rather than implying full experimental
+    independence, both where it's first stated and in the Conclusion.
+  - **T02 (blind-prediction frequency selection, undocumented)** and **T30 (LOOCV model
+    forms, undefined)**: both pulled from real source - `tools/model/fit_model.py`'s
+    actual `predict()` function uses nearest-calibration-frequency selection (no
+    interpolation/extrapolation) with the result floored at 0 kg; the four LOOCV model
+    forms are now spelled out explicitly (linear; + interaction term; + quadratic freq;
+    full). **T05 (MAPE's zero-load handling)**: the exact original LOOCV/MAPE
+    computation isn't in any committed, rerunnable script (it was done ad hoc, same
+    situation `generate_figures.m` already notes for Figs. 11/14) - rather than guess
+    at an unverifiable implementation detail, the paper now states MAE (unambiguous, in
+    kg) as the primary metric and flags MAPE's 0 kg blind spot generically.
+  - **T20 (commanded vs. output frequency)**: confirmed from `firmware/stm32/Core/Src/
+    main.c` that these are genuinely two different Modbus registers (0x2103 output
+    frequency, which the firmware actually reads and logs; 0x2102 frequency command) -
+    added one sentence clarifying "commanded frequency" means the former, which
+    coincides with the latter at steady state under this drive's open-loop V/Hz control.
+  - **T22 (which UART)**: the Modbus link is USART1, distinct from USART2 (PC console) -
+    now named explicitly where first introduced, matching how USART2 is already named.
+  - **T23/T24 (steady-state threshold, RPM-run pairing)**: pulled the real constants
+    from firmware (`STEADY_MIN_FREQ_HZ=0.5`, `STEADY_FREQ_TOL_HZ=0.05`) and stated the
+    real logger behavior (RPM is asked immediately after each run ends, before the
+    next begins) instead of leaving both unspecified.
+  - **T26 (P03.00's value)**: Table IV's P03.00 row now shows the real numeric value
+    ("1 (frequency command)"), matching `docs/vfd-parameters.md` and the pattern every
+    other row in that table already uses.
+  - **Title (T01)**: minimally reworded - "Sensorless Load Estimation via Current and
+    Slip..." - rather than adopting either of the audit's two longer proposed
+    replacement titles, which conflicted with the standing "short and concise" wording
+    instruction; the Abstract already distinguished deployed current from evaluated
+    slip reasonably well, so no further rewrite was needed there.
+  - **Explicitly not implemented, by design** (see the chat response to David for the
+    full reasoning): no further section/heading renaming beyond the C1/C2 fix above - a
+    dedicated fresh-eyes naming pass already happened one revision ago; the title
+    wasn't replaced wholesale; references [2]/[9]-[13] remain deliberately uncited
+    in-body; no limit-switch/e-stop content was added (this is a manually-operated
+    bench rig, not a product).
+  - **Logged rather than guessed on**: T13 (rod-count contradiction between prose and
+    Table V) as new item A15, and T11 (a full mass-to-torque mechanical model) as new
+    item B3 - both need real information (David's own knowledge of the rig, or new
+    analysis) rather than a text edit.
+  - Build/verify: 11 pages, clean page-by-page visual check, and the established
+    programmatic column-width check re-run clean (0 violations across 15 images/15
+    tables against the real 5047-twip single-column ceiling).
+  - File: `scratchpad/paper_rev0/Sensorless_Load_Estimation_IEEE_Rev14.docx`.
 
 - **Major presentation deck synced to Rev 13** — brought
   `Sensorless_Load_Estimation_Deck_RevN.pptx` (frozen at Rev 9) in line with the
