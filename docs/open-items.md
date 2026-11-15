@@ -4,8 +4,8 @@ The data-acquisition and communication platform is built, wired, and validated
 end-to-end on real hardware (STM32 Nucleo-F401RE, RS-485 transceiver to the VFD, PC-side
 logger). What remains falls into two groups: things that need an action from David
 (Section A) and lower-priority/deferred work (Section B). Every item below is cross-
-checked against the current paper (`Sensorless_Load_Estimation_IEEE_Rev12.docx`) and
-all four deliverables as of Rev 12 for the paper (the decks and lab manual are still at
+checked against the current paper (`Sensorless_Load_Estimation_IEEE_Rev13.docx`) and
+all four deliverables as of Rev 13 for the paper (the decks and lab manual are still at
 their Rev 9/pre-review state - explicitly frozen until David reviews the paper). Note:
 David has said the .docx is the only deliverable he wants going forward for the paper -
 the PDF is still generated internally for page-render visual verification, but is no
@@ -28,11 +28,6 @@ own hardware:
 - **"Our Approach" slide:** a photo or logo of PAR Systems' anti-sway crane product
   (the commercial telemetry-first precedent cited as reference [1]).
 Any representative stock photo or the vendor's own product image works for both.
-
-### A4. Photo of the VFD's RJ45 jack specifically
-Requested in David's Rev 3 review comments. The paper has a wide shot of the whole
-wired VFD (Fig. 3) but not a close-up of the RJ45 jack itself where the RS-485 link
-taps in. Flagged with a red placeholder in the paper, Section III-C.
 
 ### A5. Dedicated VFD and controller photos for the major deck's Hardware Platform table
 Surfaced during the Rev 7 deck redesign. `Sensorless_Load_Estimation_Deck_Rev7.pptx`,
@@ -57,20 +52,15 @@ instead needs to live in a Limitations discussion - David believes this is alrea
 his PowerPoint slides somewhere and wants that confirmed rather than rewritten from
 scratch in the paper.
 
-### A10. Add ~5 more applicable IEEE reference entries
-David's call: the References list should carry roughly 5 more applicable sources beyond
-the current 8 - they don't need to be cited in-body, just listed as references. Needs
-real candidate sources (not fabricated) - likely more induction-motor/VFD/sensorless-
-estimation literature in the same vein as refs [2]/[3]/[8].
-
-### A11. Italicize every unit in running text (Rev 10 follow-up)
-Flagged while building Rev 10: the "every unit mentioned in running text must be
-italicized" standing rule (below) was not applied in that pass. `build_paper.js`'s
-`body()` helper only supports single-run paragraphs, so retrofitting ~100 paragraphs'
-worth of mixed-run text (plain prose with italic units spliced in mid-sentence) needs a
-small helper rewrite first, not a one-off text edit - doing it piecemeal just on the
-sentences touched in Rev 10 would have looked like an inconsistency rather than a rule.
-David's call: hold this for the next paper revision rather than block Rev 10 on it.
+### A14. Put the STM32 firmware flowchart (Fig. 7) into the editable PowerPoint deck too
+Comment 4 on the Rev 12 markup: "Make sure this flow chart lives in the powerpoint that
+has all the examples which allows me to move the lines around." The flowchart is in the
+paper as a raster image (`scratchpad/flowchart/gen_flowchart.m` output); David also wants
+it rebuilt as native, moveable PowerPoint shapes in whichever deck carries the other
+native diagrams/tables (the `Sensorless_Load_Estimation_Diagrams_Tables_Export` deck -
+see the "MATLAB/Octave figure script and diagrams/tables export" Resolved entry below).
+Not done in this pass - this is Word-document-only work; the PPT side is a separate,
+not-yet-scheduled pass once the decks themselves get updated to Rev 13.
 
 ## Standing rules (style/formatting, apply going forward)
 
@@ -187,6 +177,73 @@ of scope for the bare Nucleo without an added Ethernet/WiFi module).
 
 ## Resolved
 
+- **Rev 13: fresh-eyes section-naming/flow review, 6 new comments, unit italics,
+  5 new references, A4 closed** — David asked for a genuine fresh-eyes pass over every
+  section/subsection name and the overall flow against real IEEE convention, plus 6 new
+  comments on a Rev 12 markup (no tracked changes this round), then added three more
+  decisions mid-pass: bring A11 (italicize units) into scope now, add 5 real references
+  he'd found via web search, and close A4.
+  - **Section/subsection naming fixed**: "E2. Software Tools: GSoft2 vs. STM32CubeIDE"
+    was nested as a sub-subsection under "E. Human-Machine Interface," but it's about
+    development/configuration tooling, not runtime operator interaction - a genuine
+    topic mismatch, and almost certainly what comment 60 ("This section formatting is
+    not right...") and David's separate chat note about sections "mixing in with each
+    other" were both pointing at. Fixed: given its own top-level letter, moved right
+    after "D. RS-485 Interface" (where GSoft2 is first introduced) and before HMI;
+    Section III is now A-G (Overview, VFD/Motor/Instrumentation, Mechanical Build,
+    RS-485 Interface, Software Tools, Human-Machine Interface, Data Logging), with every
+    cross-reference to the old E2/E/F letters updated throughout the paper (III-E2 to
+    III-E, III-F to III-G, in four separate places including one inside the Discussion
+    section that a plain text search would have missed). Also renamed "D. Is This a
+    Modeling Problem?" (Section V) to "D. Model Complexity Analysis" and "A. Why
+    Approximately 50% Error: A Signal-vs-Noise Budget" (Section VI) to "A. Signal-to-
+    Noise Error Budget" - both were stylistically inconsistent with the short noun-phrase
+    heading convention used by every sibling heading in the paper (a question-style
+    heading and a colon-subtitle heading, respectively). Considered but not changed:
+    Section III-B ("VFD, Motor, and Reference Instrumentation") is broad - it also
+    carries the operator control station wiring and VFD parameters table - but the
+    content still coheres under one "describing the hardware" topic, so it was left
+    alone rather than split without being asked. Also flagged, not fixed (out of scope
+    for a section-naming pass): the table numbering sequence has a real ordering problem
+    - "Table II-B" (Operator Control Station Wiring) appears in reading order *before*
+    "Table I-C" (VFD Parameters), which reads as if it belongs to a later table "family"
+    than one that actually follows it. Fixing this would mean renumbering nearly every
+    table in the document and every in-text reference to it - flagged for a dedicated
+    future pass rather than attempted here.
+  - **6 new comments, all accounted for**: comment 0 (BOM's "single roll" to "1",
+    matching every other row's numeric Qty Used convention); comment 1 (Polylactic Acid
+    (PLA) spelled out at first use); comment 2 (every prose mention of the bare part
+    number "CO3636-6W7" - three instances - changed to "SERVO Machine," matching how the
+    standing rule already treats other part numbers; the part number itself stays in
+    Table I, where it belongs); comment 3 (USART2 given its own first-use expansion,
+    Universal Synchronous/Asynchronous Receiver-Transmitter, distinct from UART); comment
+    4 (logged as new action item A14, not a Word-doc fix - see above); comment 5 (trimmed
+    "both r² and n are dimensionless counts" as unnecessary).
+  - **A11 resolved**: extended `body()`'s helper to support mixed plain/italic runs
+    within one paragraph (a lightweight `*marker*` convention parsed into separate
+    `TextRun`s, rather than rewriting every call site to pass an array), then ran a real
+    pass over every running-text unit mention in the paper - kg, A, Hz, V, kW, mm, ms, s,
+    HP, N·m - leaving table cells, equation text, and figure axis labels untouched since
+    those were already correctly formatted and the rule is specifically about running
+    prose. Caught and fixed two false positives from the first automated pass (motor
+    terminal labels "V/T2" and "W/T3" were briefly, incorrectly italicized by a regex
+    that mis-parsed "...T1, V/T2..." as a number-comma-unit sequence) before finalizing.
+  - **A10 resolved**: 5 real references added as [9]-[13] (induction-motor sensorless
+    load/torque estimation and nonintrusive motor-assessment literature), found via web
+    search and verified against their actual DOIs rather than fabricated. Not cited
+    in-body, consistent with the existing A10 precedent for refs [2]/[3]/[8].
+  - **A4 closed**: David's call - "close this," no RJ45 close-up photo is coming. Moved
+    to descoped below; no paper change needed since the inline action-item bracket for
+    this was already removed in an earlier revision.
+  - Verified: visual page-by-page PDF render (10 pages, unchanged from Rev 12 - the
+    reference/heading/unit-italics work didn't add pages) plus the same programmatic
+    column-width check as Rev 12 (every image/table width against the 5047-twip
+    single-column ceiling) - 0 violations across 15 images and 15 tables, no regression
+    from the section reordering.
+  - Files: `scratchpad/paper_rev0/Sensorless_Load_Estimation_IEEE_Rev13.docx`.
+- **A4. Photo of the VFD's RJ45 jack specifically** — descoped, David's call: "close
+  this." No photo is coming; the paper's inline action-item bracket for this had already
+  been removed in an earlier revision, so no further paper change was needed.
 - **Rev 12: root-cause column-span fix, full Rev 11 comment audit, real IEEE template
   numbers, new firmware flowchart** — David marked up Rev 11 with 20 new comments (1,
   60-78) and 59 tracked changes, plus two things said directly in chat: a new rule that
