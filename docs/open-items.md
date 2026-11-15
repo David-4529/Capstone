@@ -113,6 +113,37 @@ edits of the paper, not just the passages they were originally flagged on.
   immediately after** - reinforces the existing standing rule; this round caught CNN,
   RTU, and UART missing their expansion despite being used as bare acronyms later.
 
+### Rules pulled from the official IEEE conference Word template
+David supplied the actual IEEE conference template (`conference-template-letter_2.docx`)
+so our numbers stop being approximations. Real spec, US-letter page (612pt x 792pt):
+
+- **Margins are not uniform**: top 54pt (0.75in), bottom 72pt (1.0in), left/right
+  44.65pt (~0.62in) each - `build_paper.js` was using a uniform 54pt on all four sides
+  (`MARGIN = 1080` twips everywhere), which is wrong on three of the four sides.
+- **Two-column gutter is 18pt (360 twips)**, not the 14.4pt (288 twips) `build_paper.js`
+  was using (`COL_GAP`).
+- **Body font is Times New Roman, 10pt** - `build_paper.js` already had this right.
+- **Figure labels/axis text: 8pt Times New Roman**, and use words with units in
+  parentheses rather than bare symbols (e.g. "Magnetization (A/m)", not "A/m") - applies
+  to `generate_figures.m`'s axis labels.
+- **The template itself permits large figures/tables to span both columns** ("Large
+  figures and tables may span across both columns") - this is normal, accepted IEEE
+  practice in general. David's own rule above (no spanning, ever, for this paper) is a
+  stricter personal preference that overrides the template's general allowance - noted
+  here so the distinction isn't lost, not as a contradiction to resolve.
+- **Figures/tables belong at the top or bottom of a column, not mid-column**, and should
+  be inserted after the text that first cites them, not before.
+- **Reference-list titles use sentence case** (capitalize only the first word and proper
+  nouns), not Title Case - our current References list is Title Case and needs
+  rechecking against this.
+- **Acronyms/abbreviations must be defined at first use in the body text even if already
+  defined in the Abstract** - the Abstract doesn't "cover" the body's first use.
+  IEEE/SI/MKS/CGS/dc/rms/ac don't need defining.
+- **Always use a leading zero before a decimal** ("0.25", not ".25").
+- **"Data" is plural** ("the data are", not "the data is").
+- Equation numbers sit flush-right in parentheses; italicize Roman variable symbols
+  (not Greek symbols); use a true minus sign/long dash, not a hyphen, in equations.
+
 ### A13. Fig. 5 (RS-485 transceiver signal-mapping diagram) needs David's own rework
 Comment 254 on the Rev 9 markup: "Figure 4 needs work, I need to fix prior to you
 updateing it here" (figure number has since shifted to Fig. 5 after the Rev 11
