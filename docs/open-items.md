@@ -177,6 +177,35 @@ of scope for the bare Nucleo without an added Ethernet/WiFi module).
 
 ## Resolved
 
+- **11/6 progress-meeting deck synced to Rev 13** — brought `Capstone_Progress_Update_
+  11_6_26_RevN.pptx` (frozen at Rev 9) in line with everything the paper's Rev 10-13
+  cycle changed. Kept the deck's own point-in-time content intact (it's a dated snapshot
+  of the Nov 6 meeting - the completion percentages, "What's Left," and timeline slides
+  stay as they were, since rewriting those would misrepresent what was actually known at
+  that meeting); only fixed genuine factual/terminology drift against the now-current
+  paper:
+  - Down-direction (lowering) slip/current columns removed from the No-Load Baseline
+    table (Slide 7) - the motor has no dynamic braking, so this was never physically
+    meaningful and isn't reported anywhere in the paper anymore; the slide's framing
+    sentence updated to match, and the explanatory bullet beneath it rewritten
+    accordingly (previously claimed slip was "strongly direction-dependent," which no
+    longer makes sense without a down-direction column to compare against).
+  - "RS-485/MAX485" - "RS-485 transceiver" (Slide 5, matching the Rev 11 rename).
+  - "Lucas Nülle SERVO Machine Test System (CO3636-6W7)" - "SERVO Machine Test System"
+    and "QWORK digital scale" - "digital hanging scale" (Slide 3), matching the
+    don't-repeat-part-numbers-in-prose rule; the VFD/motor make-and-model bullets on the
+    same slide were left alone since they function as an equipment list, not prose.
+  - "T-Block" - "T-housing" (Slides 5 and 10) - a stale name from before the paper's own
+    Rev 3-6 rename; this deck had never picked it up.
+  - Speaker note on Slide 6 updated from a stale "$99.34 purchased, by actual quantity
+    used" BOM figure to the current flat "$385 total project cost."
+  - No mN·m, torque-sensor-contradiction, or USART2/PLA content found in this deck -
+    those don't appear here, nothing to fix on those fronts.
+  - Verified via PDF page-by-page render - no overflow, tables fit their slides cleanly.
+  - File: `scratchpad/deck_1106/Capstone_Progress_Update_11_6_26_Rev13.pptx` (not
+    committed - deck sources and outputs live only in scratchpad, same as the paper's
+    own build script).
+
 - **Rev 13: fresh-eyes section-naming/flow review, 6 new comments, unit italics,
   5 new references, A4 closed** — David asked for a genuine fresh-eyes pass over every
   section/subsection name and the overall flow against real IEEE convention, plus 6 new
