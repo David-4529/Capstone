@@ -4,9 +4,12 @@ The data-acquisition and communication platform is built, wired, and validated
 end-to-end on real hardware (STM32 Nucleo-F401RE, RS-485 transceiver to the VFD, PC-side
 logger). What remains falls into two groups: things that need an action from David
 (Section A) and lower-priority/deferred work (Section B). Every item below is cross-
-checked against the current paper (`Sensorless_Load_Estimation_IEEE_Rev11.docx`) and
-all four deliverables as of Rev 11 for the paper (the decks and lab manual are still at
-their Rev 9/pre-review state - explicitly frozen until David reviews the paper).
+checked against the current paper (`Sensorless_Load_Estimation_IEEE_Rev12.docx`) and
+all four deliverables as of Rev 12 for the paper (the decks and lab manual are still at
+their Rev 9/pre-review state - explicitly frozen until David reviews the paper). Note:
+David has said the .docx is the only deliverable he wants going forward for the paper -
+the PDF is still generated internally for page-render visual verification, but is no
+longer something to send him.
 
 ## A. Needs an action from David
 
@@ -125,7 +128,12 @@ so our numbers stop being approximations. Real spec, US-letter page (612pt x 792
 - **Body font is Times New Roman, 10pt** - `build_paper.js` already had this right.
 - **Figure labels/axis text: 8pt Times New Roman**, and use words with units in
   parentheses rather than bare symbols (e.g. "Magnetization (A/m)", not "A/m") - applies
-  to `generate_figures.m`'s axis labels.
+  to `generate_figures.m`'s axis labels. Font FAMILY was fixed to Times New Roman in
+  Rev 12; font SIZE was deliberately kept at 15pt rather than the literal 8pt - that
+  spec is written for native Word text, not pixels baked into a raster PNG at a given
+  DPI, and a literal 8pt here would be unreadable once the image is shrunk to single-
+  column width (the exact problem a Rev 3 review comment already fixed by bumping these
+  sizes up). Flagged for David to double check rather than silently decided on.
 - **The template itself permits large figures/tables to span both columns** ("Large
   figures and tables may span across both columns") - this is normal, accepted IEEE
   practice in general. David's own rule above (no spanning, ever, for this paper) is a
@@ -178,6 +186,78 @@ already running the serial monitor, or networking added to the controller itself
 of scope for the bare Nucleo without an added Ethernet/WiFi module).
 
 ## Resolved
+
+- **Rev 12: root-cause column-span fix, full Rev 11 comment audit, real IEEE template
+  numbers, new firmware flowchart** — David marked up Rev 11 with 20 new comments (1,
+  60-78) and 59 tracked changes, plus two things said directly in chat: a new rule that
+  no figure/table/reference may ever span both columns, and that the paper is missing a
+  software flow chart. Also supplied the real official IEEE conference Word template,
+  showing `build_paper.js`'s layout constants were wrong approximations (see "Rules
+  pulled from the official IEEE conference Word template" above).
+  - **Root cause of nearly every figure/table rendering full-width** (comments 61-63,
+    70-78): `build_paper.js` had deliberately switched the entire Results section, and
+    several figure/photo blocks in Section III-D/III-F, to one-column (full page width)
+    layout to dodge short, awkward two-column breaks - every figure/table inside one of
+    those stretches was full-width by construction. Fixed structurally: restored genuine
+    two-column layout for the whole paper (down from 9 section breaks to 5: one
+    one-column title/abstract block plus four two-column sections) and resized every
+    figure/table to the real single-column width. This also resolved comment 60 ("This
+    section formatting is not right, its getting added before the previous section is
+    done") and David's separate chat note that "sometimes [sections] look to be mixing
+    in with each other" - both were symptoms of the same fragmented-section root cause.
+    Verified two ways, not just by eye: visually, page by page, and programmatically (a
+    script checking every `<wp:extent>` image width and `<w:tblW>` table width in the
+    built docx's raw XML against the real single-column ceiling of 5047 twips - 0
+    violations across 15 images and 15 tables).
+  - **Real IEEE template margins/gutter applied**: top 1080 / bottom 1440 / left-right
+    893 twips (was a uniform 1080 on all sides), column gutter 360 twips (was 288).
+  - **New STM32 firmware control-flow chart added as Fig. 7** (David's explicit chat
+    request, "a simple flow chart of the stm32 code") - grounded in
+    `firmware/stm32/Core/Src/main.c`'s real init/poll/log/command-handle loop, drawn as
+    a simple box-and-arrow chart via a new Octave script
+    (`scratchpad/flowchart/gen_flowchart.m`, not part of `generate_figures.m` since it's
+    a schematic, not a data plot) sized to fit single-column width (its height runs the
+    full column, which is fine - the no-spanning rule is about width, not height).
+  - **Comment 71 caught in the full audit, missed in the Rev 11 pass**: Fig. 8 (no-load
+    baseline, slip + current in one two-panel figure) needed splitting into two
+    standalone figures, same as the torque-validation figure already was in Rev 11.
+    Done (`generate_figures.m` now emits `fig4_baseline_slip.png` /
+    `fig4_baseline_current.png`), which bumped every subsequent figure number by one
+    (Fig. 9 onward).
+  - **A real LibreOffice table-rendering bug found and fixed during verification**: Table
+    XII's data rows were silently dropped from the PDF render (confirmed present in the
+    docx's raw XML the whole time) when the table sat right after its figure at a column
+    break. Reordering it to table-then-figure, matching every other subsection's
+    convention in Results, fixed it - a third LibreOffice-specific rendering quirk found
+    this way, after the header-split and image-drop bugs Rev 11 already caught.
+  - **BOM total simplified further**: per David's own tracked edit, the "$117.14
+    out-of-pocket / ~$385 reference cost" two-number framing is now one flat sentence,
+    "Total out-of-pocket cost for this project was $385."
+  - **Acronym fixes**: Convolutional Neural Network (CNN), Leave-One-Out
+    Cross-Validation (LOOCV), and Comma-Separated Value (CSV) capitalized correctly;
+    VFD and RTU - previously defined only in the Abstract - now also spelled out at
+    their first body-text use, per the new "define in the body even if already in the
+    Abstract" template rule.
+  - **References converted to sentence case** per the template rule (e.g. "Anti-sway
+    crane motion controls," not "Anti-Sway Crane Motion Controls").
+  - **"Down-direction data is" → "data are"** (data-is-plural template rule); no other
+    singular/plural "data" issues or missing leading zeros found elsewhere in the paper.
+  - **Equation numbering fixed to be genuinely flush-right** via a real tab stop instead
+    of manual space-padding, which would have silently misaligned once the column width
+    changed.
+  - Smaller comment-driven fixes: "Calibration Procedure" → "Calibration and Baseline
+    Testing" heading (comment 67); Table IV's "steady" field description shortened
+    (comment 64); the Fig. 7 (old)/calibration-objects photo removed with its three
+    objects and weights named directly in text instead (comment 69); the one-sentence
+    "C. Validation" intro removed as adding nothing beyond its own C1/C2 subheadings
+    (comment 74); "SERVO Machine" capitalization confirmed already consistent throughout
+    (comments 65/66 - no change needed).
+  - Not done: the full remaining IEEE-template rule list (figures/tables at top/bottom of
+    a column specifically, not just inserted after first citation - current placement is
+    reasonable but not rigorously re-checked against "top or bottom of column" placement)
+    wasn't re-verified exhaustively; flagged for a future pass rather than claimed done.
+  - Files: `scratchpad/paper_rev0/Sensorless_Load_Estimation_IEEE_Rev12.docx`. Figures
+    regenerated in `tools/matlab/figures/` and copied into `paper_rev0/assets/`.
 
 - **A12. Full Rev 9 comment-by-comment audit, Rev 11** — David caught that several Rev 9
   comments were never actually incorporated into Rev 10 and asked for a real, systematic
