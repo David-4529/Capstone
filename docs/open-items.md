@@ -167,6 +167,56 @@ of scope for the bare Nucleo without an added Ethernet/WiFi module).
 
 ## Resolved
 
+- **Major presentation deck synced to Rev 13** — brought
+  `Sensorless_Load_Estimation_Deck_RevN.pptx` (frozen at Rev 9) in line with the
+  paper's Rev 10-13 changes:
+  - **A real factual contradiction fixed**: the Reference Instrumentation slide claimed
+    the SERVO Machine's torque sensor "was never used in this project... its driver
+    software is incompatible," the same wrong claim comment 45 caught in the paper.
+    Corrected to match: the torque sensor was used for independent validation, and is
+    not part of the live, deployed (sensorless) platform.
+  - **"MAX485" renamed to "RS-485 Transceiver"** throughout (slide titles, the native
+    System Signal Path and RS-485 Wiring Diagram shape labels, the module-reference
+    slide, and the BOM row) - including inside the native diagram shapes themselves,
+    not just surrounding prose.
+  - **BOM rebuilt** to match the paper's simplified Table II: one real Qty/Price per
+    row (no more Used/Pack prorating), cable qty "whole roll" → "1", total cost as one
+    flat "$385" instead of the old $99.34-out-of-pocket/~$367-reference split.
+  - **Down-direction data removed from the No-Load Baseline slide** (table columns and
+    figure) - the motor has no dynamic braking, so it was never physically meaningful;
+    swapped in the paper's two newly-split figures (slip, current) in place of the old
+    combined chart.
+  - **Torque-validation results slide**: swapped in the paper's two split figures
+    (slip, torque) in place of the old combined chart; torque values converted mN·m →
+    N·m; dropped the "100-102%/raw-channel-correction" explanation from the setup
+    slide to match the paper's own trim (David's call there: it's a distraction from
+    the main point).
+  - **New Fig. 7 slide added (A14)**: an STM32 firmware control-flow chart built from
+    native PowerPoint shapes (boxes + arrows, including an elbow-routed loop-back
+    connector), grounded in the real `firmware/stm32/Core/Src/main.c` loop - matches
+    this deck's existing native-diagram convention (System Signal Path, RS-485 Wiring
+    Diagram). Note: a separate pass also added this chart to the Diagrams & Tables
+    Export deck (see below) - David's A14 comment pointed at "the powerpoint that has
+    all the examples," which is that export deck, but it fits this deck's own
+    firmware-explanation slide naturally too, so both now have it.
+  - **5 new references added** ([9]-[13], same sources as the paper), and all 13
+    references (including the original 8) converted to sentence case to match the
+    paper's reference-list rule.
+  - **Heading renames to match the paper's fresh-eyes section-naming pass**: "Is This a
+    Modeling Problem?" → "Model Complexity Analysis"; "Why ~50% Error? A
+    Signal-vs-Noise Budget" → "Signal-to-Noise Error Budget".
+  - **PLA spelled out** (Polylactic Acid) on the Mechanical Build slide; dropped the
+    "QWORK" brand name from prose per the existing don't-repeat-manufacturer-names rule.
+  - **Open Items slide**: removed the closed A4 (RJ45 photo) bullet; added A5/A8 so the
+    slide matches the current docs/open-items.md Section A instead of an older subset.
+  - Stale "Section V-E"/"Table X/XI" paper cross-references updated to the current
+    "Section V-C2"/"Table IX/X" throughout (Next Steps, Deliverables, and the
+    torque-validation notes).
+  - Verified by rebuilding, converting to PDF, and visually checking every changed
+    slide, including iterating on the new flowchart slide twice to fix a subtitle
+    text-overflow bug and a loop-back arrow that was routed to the wrong box.
+  - File: `scratchpad/deck_rev1/Sensorless_Load_Estimation_Deck_Rev13.pptx` (42 slides).
+
 - **Diagrams & Tables Export deck synced to Rev 13, new flowchart slide added** —
   brought `Sensorless_Load_Estimation_Diagrams_Tables_Export_RevN.pptx` (frozen at
   Rev 9) in line with the paper's Rev 10-13 changes, and resolved A14 (the STM32
