@@ -52,16 +52,6 @@ instead needs to live in a Limitations discussion - David believes this is alrea
 his PowerPoint slides somewhere and wants that confirmed rather than rewritten from
 scratch in the paper.
 
-### A14. Put the STM32 firmware flowchart (Fig. 7) into the editable PowerPoint deck too
-Comment 4 on the Rev 12 markup: "Make sure this flow chart lives in the powerpoint that
-has all the examples which allows me to move the lines around." The flowchart is in the
-paper as a raster image (`scratchpad/flowchart/gen_flowchart.m` output); David also wants
-it rebuilt as native, moveable PowerPoint shapes in whichever deck carries the other
-native diagrams/tables (the `Sensorless_Load_Estimation_Diagrams_Tables_Export` deck -
-see the "MATLAB/Octave figure script and diagrams/tables export" Resolved entry below).
-Not done in this pass - this is Word-document-only work; the PPT side is a separate,
-not-yet-scheduled pass once the decks themselves get updated to Rev 13.
-
 ## Standing rules (style/formatting, apply going forward)
 
 Surfaced in the Rev 9 Word review (comments + tracked changes); apply to all future
@@ -176,6 +166,43 @@ already running the serial monitor, or networking added to the controller itself
 of scope for the bare Nucleo without an added Ethernet/WiFi module).
 
 ## Resolved
+
+- **Diagrams & Tables Export deck synced to Rev 13, new flowchart slide added** —
+  brought `Sensorless_Load_Estimation_Diagrams_Tables_Export_RevN.pptx` (frozen at
+  Rev 9) in line with the paper's Rev 10-13 changes, and resolved A14 (the STM32
+  firmware flowchart needed to live in "the powerpoint that has all the examples which
+  allows me to move the lines around" - this is that deck).
+  - **New Fig. 7 slide**: the STM32 firmware control-flow chart, built entirely from
+    native PowerPoint shapes (8 boxes, 6 down-arrows, 2 right-arrows, 4 connector
+    lines - 36 separate `<p:sp>` shape elements confirmed directly in the saved
+    pptx's XML, 0 `<p:pic>` image elements) so every box and arrow can be moved
+    independently, per David's explicit request. Grounded in the real
+    `firmware/stm32/Core/Src/main.c` loop. Caught and fixed a real layout bug during
+    verification: the first draft routed the loop-back arrow straight through the
+    "Every 250 ms" and "Compute sync RPM" boxes instead of around them - rerouted
+    outside the box column entirely.
+  - **Figures renumbered/added to match the paper exactly** (1-14, plus the unnumbered
+    RS-485 vendor-reference image): Fig. 2 (full test rig photo) is newly numbered
+    here to match the paper; the old combined no-load-baseline figure and the old
+    combined torque-validation figure are each now two separate figures (Figs. 8/9
+    and 12/13) per the paper's Rev 11 split; down-direction data dropped from the
+    baseline figure entirely (no dynamic braking on this motor).
+  - **Tables renumbered/added to match**: new Table I-B (Motor Nameplate Data); Table
+    II (BOM) simplified to one real Price=Cost per row, $385 flat total (no more
+    pack-price/prorated framing); Table III's "MAX485 Pin" header and slide title
+    renamed to "Transceiver Pin"/"RS-485 Transceiver Signal Mapping"; the old combined
+    7-column torque+slip table split into Table IX (slip only) and Table X (torque
+    only, N·m not mN·m, "Corrected" dropped); Table XI's "Oct. 7 Calibration" column
+    header shortened to "Calib." (no bare calendar date); Table I/Table II-B's VFD
+    terminal column/header, Table I-C's caption ("Section III-E2" → "Section III-E"),
+    and Table VIII's headers shortened to match the paper's current wording exactly.
+  - Verified two ways: visual page-by-page PDF render (31 slides, clean) and a direct
+    text sweep of the rendered PDF confirming zero remaining "MAX485" or "mN" instances
+    anywhere in the deck.
+  - This deck still carries no References slide (it never had one - out of scope to
+    add now; it exports figures/tables only, not the paper's prose or citations).
+  - File: `scratchpad/export_rev3/Sensorless_Load_Estimation_Diagrams_Tables_Export_
+    Rev13.pptx`.
 
 - **11/6 progress-meeting deck synced to Rev 13** — brought `Capstone_Progress_Update_
   11_6_26_RevN.pptx` (frozen at Rev 9) in line with everything the paper's Rev 10-13
