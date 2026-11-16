@@ -139,15 +139,13 @@ renumbering - it's the drawn VFD RJ45 -> transceiver -> STM32 pin-mapping diagra
 `tools/matlab/generate_figures.m`'s `fig2_rs485_wiring.png`). Left untouched beyond the
 MAX485-label rename (Rev 11) since David said he'd provide the update himself.
 
-### A15. Rod-count contradiction: "a single rod" (prose) vs. qty 2 (Table V BOM)
-Surfaced by an external technical audit of Rev 12 (finding T13), confirmed real and
-not touched: Section III-C's prose says "a single 8 mm hardened steel linear rod is
-mounted between two square pillars," but Table V (Bill of Materials) lists "8 mm x
-800 mm linear rod" at Qty Used = 2. This is a direct, verifiable contradiction within
-the paper itself. Not guessed at either direction - need David to confirm whether the
-actual rig uses one rod or two, and if two, how they're actually arranged (e.g. one
-per side, a spare, cut from stock), so the prose can be corrected to match reality
-rather than the other way around.
+### A15. Fix BOM qty for the linear rod: 1, not 2 (confirmed by David)
+Surfaced by an external technical audit of Rev 12 (finding T13): Section III-C's prose
+says "a single 8 mm hardened steel linear rod," but Table V (Bill of Materials) listed
+"8 mm x 800 mm linear rod" at Qty Used = 2. David confirmed: 1 rod was actually used -
+the prose is correct, the BOM's qty is wrong. His call: update on the next paper
+revision rather than as an isolated edit now - fix Table V's Qty Used to 1 (and its
+Cost, if priced per-unit rather than per-pack) at that point.
 
 ## Standing rules (process)
 
@@ -175,14 +173,24 @@ serial stream onto something that can host a web page — a small script on the 
 already running the serial monitor, or networking added to the controller itself (out
 of scope for the bare Nucleo without an added Ethernet/WiFi module).
 
-### B3. Mass-to-torque mechanical model
+### B3. Mass-to-torque mechanical model - David asked whether this is really needed
 Surfaced by an external technical audit of Rev 12 (finding T11): the paper reports
 suspended mass (kg) as "load" but the motor physically responds to shaft torque.
-Deriving a real mechanical model mapping suspended mass to motor shaft torque (cable
-radius/drum effective diameter, pulley mechanical advantage, the 20T/60T (3:1) belt
-reduction, and mechanical losses) is legitimate and would strengthen the paper, but
-it's a substantial new piece of analysis in its own right, not a wording fix - logged
-here rather than attempted inline during a comment-response pass.
+David asked directly whether deriving a full mechanical model (cable radius, pulley
+mechanical advantage, the 3:1 belt reduction, mechanical losses) is actually necessary.
+My assessment: no, not for what this paper currently claims. The deployed estimator is
+explicitly an empirical per-rig regression (current -> mass), not a physics-derived
+torque model, so nothing downstream depends on a mass-to-torque conversion to be
+valid. The torque-validation section already reports its "torque clusters tightly
+across different masses" finding qualitatively (attributed to baseline friction/belt
+tension dominating these specific small objects' torque differences) without claiming
+a precise expected mass-torque proportionality to defend. A full derivation would be a
+nice-to-have depth addition (or good future work/appendix material), not a gap in the
+paper's actual argument. Cheaper alternative if any protection against this critique
+is wanted at all: one sentence explicitly stating that a mass-torque proportionality
+is not being claimed or tested here, scoping out the concern directly rather than
+building the model. Staying logged here as optional, not blocking, pending David's
+call on whether to do even the one-sentence version.
 
 ## Resolved
 
