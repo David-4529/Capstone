@@ -5,7 +5,7 @@
 This session's container was reclaimed between turns and every file that had only
 ever existed in session scratchpad was lost (`build_paper.js`, the major deck, the
 11/6 deck, the Diagrams & Tables Export deck) - only a changelog entry survived in
-this file, which is not a backup. That must never happen again. Two rules fix it:
+this file, which is not a backup. That must never happen again. These rules fix it:
 
 1. **The five main deliverables are**: the IEEE paper, the major presentation deck,
    the 11/6 progress-meeting deck, the Diagrams & Tables Export deck (every diagram as
@@ -42,10 +42,11 @@ The data-acquisition and communication platform is built, wired, and validated
 end-to-end on real hardware (STM32 Nucleo-F401RE, RS-485 transceiver to the VFD, PC-side
 logger). What remains falls into two groups: things that need an action from David
 (Section A) and lower-priority/deferred work (Section B). Every item below is cross-
-checked against the current paper (`Sensorless_Load_Estimation_IEEE_Rev16.docx`); the
-decks and lab manual are still at their Rev 13/pre-review state (see the Resolved
-section below for exactly what's synced where) - explicitly frozen until David reviews
-the paper further. Note:
+checked against the current paper (`Sensorless_Load_Estimation_IEEE_Rev17.docx`). The
+major presentation deck is synced to Rev 17 (see Resolved below); the Diagrams & Tables
+Export deck is still at Rev 13 and the lab manual is not yet built - the 11/6
+progress-meeting deck was lost to a container reset and David said not to worry about
+replacing it. Note:
 David has said the .docx is the only deliverable he wants going forward for the paper -
 the PDF is still generated internally for page-render visual verification, but is no
 longer something to send him.
