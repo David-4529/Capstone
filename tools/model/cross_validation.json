@@ -1,0 +1,36 @@
+{
+  "description": "LOOCV MAE/MAPE across all 17 real calibration points, deployed per-frequency model vs. four global current+frequency regressions. See cross_validate.py docstring for exact model forms. MAPE excludes the 4 of 17 points whose true load is 0 kg.",
+  "n_points": 17,
+  "results": [
+    {
+      "key": "deployed",
+      "label": "Per-frequency (deployed, Table X)",
+      "mae_kg": 0.207,
+      "mape_pct": 31.5
+    },
+    {
+      "key": "model1",
+      "label": "current + freq (linear)",
+      "mae_kg": 0.406,
+      "mape_pct": 52.0
+    },
+    {
+      "key": "model2",
+      "label": "+ interaction term",
+      "mae_kg": 0.464,
+      "mape_pct": 56.8
+    },
+    {
+      "key": "model3",
+      "label": "+ quadratic freq",
+      "mae_kg": 0.435,
+      "mape_pct": 56.5
+    },
+    {
+      "key": "model4",
+      "label": "full (interaction + quadratic)",
+      "mae_kg": 0.494,
+      "mape_pct": 61.7
+    }
+  ]
+}
