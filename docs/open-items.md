@@ -176,6 +176,38 @@ MAX485-label rename (Rev 11) since David said he'd provide the update himself.
 Explicitly deprioritized — lowest priority in the current backlog. Needs to match the
 Summer 2026 VFD lab manual's format and document the STM32 GPIO pinout.
 
+### B4. Figure/diagram readability at printed IEEE two-column scale
+Raised by the 60-item Rev 14 audit (#45): the signal-path blocks in Fig. 1, wiring
+labels around Fig. 5, raw serial text in Fig. 6, firmware flow in Fig. 7, and legends/
+point labels in Figs. 10-14 are hard to read at single-column printed width - some
+chart symbols are nearly indistinguishable. Logged rather than attempted in the Rev 14
+batch 2 pass: this needs new figure artwork (larger text, heavier line weights,
+possibly re-laying out which figures get full-column vs. partial-column treatment),
+not a text edit, and the directive for that pass was explicit that it should be logged
+only. The one figure actually touched this pass (Fig. 11, regenerated for the real
+9-point Table XI) got the same label size/weight as before - not improved, just
+re-plotted with the correct data.
+
+### B5. Error bars / repeat-run spread on the data figures
+Raised by the same audit (#52): Figs. 8-14 show fitted curves and point estimates with
+no indication of repeat-run variability, despite the paper relying on observed
+run-to-run noise (Section VI-A) to explain the current-based estimator's accuracy
+limit. Adding error bars or individual-run scatter (grouped by test mass, with n and a
+variability statistic labeled) would make that argument visible rather than only
+asserted in prose. Logged, not implemented, same reasoning as B4 - needs
+`tools/matlab/generate_figures.m` changes and a source of per-run (not just per-
+condition-averaged) data for every affected figure, which isn't uniformly available
+(see the #28 fix above: only Resistor 2 has per-run current retained individually
+among the three blind-test objects).
+
+### B6. Full labeled mechanical-torque-path diagram (SERVO cross-check)
+Raised by the same audit (#32): beyond the prose clarification already added this pass
+(Section V-C-2 now states the SERVO's torque/speed sensors sit "downstream of this
+rig's own belt-and-drum drivetrain"), the audit's fuller ask - a drawn, labeled diagram
+of the complete mechanical path (motor shaft, 20T/60T reduction, drum, rope pulleys,
+SERVO sensor position, hoist load) - was not attempted this pass. Logged as a
+nice-to-have depth addition, similar in spirit to B3.
+
 ### B3. Mass-to-torque mechanical model - David asked whether this is really needed
 Surfaced by an external technical audit of Rev 12 (finding T11): the paper reports
 suspended mass (kg) as "load" but the motor physically responds to shaft torque.
@@ -279,6 +311,227 @@ call on whether to do even the one-sentence version.
     centered, BOM/Table XIV/Fig. 3 changes all visually confirmed.
   - Not yet addressed in this batch: David said more comments are still coming before
     Rev 15 is cut.
+
+- **Rev 14 batch 2 (60-item external technical audit + David's 8 direct answers)** —
+  David forwarded a second, independent 60-item technical/scientific audit of Rev 14
+  (`IEEE_Rev14_Technical_Review_Comments.txt`, Sections A Critical #1-15, B Major
+  #16-39, C Scientific positioning/flow/editing #40-60, D "what appears correct") and
+  asked for a COMPLY/DEFEND/CONFLICT verdict on every item, which was given in chat;
+  David then answered the 8 items that needed his direct input (#6, #30, #33, #34, #40,
+  #42/43, #51, #55 - see below). This entry covers everything implemented into
+  `build_paper.js` from that pass - another internal checkpoint, not a new numbered
+  revision (same "more comments are coming" hold as batch 1 above).
+  - **#1/#16 (the central false claim) fixed**: Section V-C-1 no longer attributes the
+    blind-test predictions to "the STM32's own firmware" - confirmed by direct grep of
+    `firmware/stm32/Core/Src/main.c` that no prediction/regression logic exists on the
+    MCU at all (`StartTest()` just stores the operator-typed known load). Reworded to
+    attribute prediction correctly to "the PC-side regression script described in
+    Section IV-B," which is the real `tools/model/fit_model.py` `predict()` function.
+  - **#2/#3/#10/#26/#29/#58 (the real blind-validation chronology) - the largest single
+    fix this batch**: Table XI expanded from 6 to 9 rows using the real Oct. 24 blind-
+    test data (`Load_Model_Validation_2026-10-24`) - the three missing T-housing rows
+    (1.08→0.80 kg, 3.33→1.05 kg, 5.55→0.25 kg) were genuinely omitted in Rev 14, not
+    excluded for a stated reason. Section V-C-1 now tells the real sequential story:
+    Blind Test 1 ("Resistor 1," 0.64 kg) undershot at both frequencies tested → a
+    one-point current-offset correction was hypothesized and tried → Blind Test 2
+    ("Resistor 2," 0.82 kg) disproved it (2.90 Hz was already accurate with no offset;
+    4.66 Hz clamped to 0 either way) → offset reverted, Resistor 2's own disclosed
+    weight folded into calibration at the two nearest frequencies (2.44 and 4.85 Hz)
+    instead → Blind Test 3 ("T-housing," 0.54 kg) then ran against the *updated* model
+    at five frequencies, not the two previously shown. 1.08 Hz (below the 1.39 Hz
+    calibration floor) and 6.81 Hz (above the 6.36 Hz ceiling) are now explicitly
+    flagged as true frequency extrapolations, not interpolations; two of the nine
+    predictions are explicitly identified as hitting the zero-floor clamp (4.66 and
+    6.81 Hz). Real blind-test MAE across all nine points (hand-computed from the actual
+    errors: 0.37, 0.46, 0.05, 0.82, 0.26, 0.51, 0.29, 0.00, 0.54 kg) is 0.37 kg -
+    reported explicitly as distinct from, and not averaged with, the separate ~0.4-0.5
+    kg LOOCV band (Section V-D), per #27's warning against conflating the two. Fig. 11
+    regenerated via `tools/matlab/generate_figures.m` (array updated to the real 9
+    points, 0.0296/0.0005-0.0011 N·m torque numbers unaffected) and recopied into
+    `paper_rev0/assets/`; its real new pixel dimensions (1979×1417, was 1979×1292) were
+    updated in `build_paper.js`'s image-aspect-ratio table so it doesn't render
+    stretched. Table X's existing n column (3, 5, 5, 4) was checked against this same
+    chronology and found already correct - the 2.44/4.85 Hz lines' n=5 (vs. 4 at
+    6.36 Hz, 3 at 1.39 Hz) is exactly the Resistor-2 fold; no table-data change needed
+    there, only the explanatory text (#25, #53 below).
+  - **#5/#6/#13/#14 (SERVO torque/slip reframing)**: the "independent torque-based
+    validation" framing is corrected to state plainly that the torque channel is
+    inconclusive - it clusters at ~0.028 N·m regardless of weight, including the
+    heaviest object (metal) reading the *lowest* torque of the three at 6.36 Hz. Added
+    the conservative, hedged ΔT consistency check David asked to keep conservative on
+    (#6): the drum's real 15.9 mm waist and 3:1 reduction imply roughly 0.0296 N·m of
+    expected torque difference between the metal and plastic objects if fully
+    transmitted, versus 0.0005-0.0011 N·m actually measured - stated as an unresolved
+    gap (sensor placement, drivetrain compliance, or another cause could all
+    contribute) rather than asserting a specific unverified mechanism. #13: the 1.39 Hz
+    slip inversion (plastic 40.3% reading higher than the heavier pliers' 35.4%) is now
+    stated explicitly rather than smoothed into "generally orders by weight." #14: the
+    pliers' 1.39 Hz torque outlier (0.00979 N·m) is no longer conflated with the
+    plastic housing's *documented* 1.39 Hz slip-capture recapture (a real, separate,
+    SERVO-notes-confirmed data-quality issue, different object and different signal) -
+    the two are now explicitly separated, and the pliers torque value is called an
+    unexplained outlier rather than attributed to the plastic housing's known cause.
+  - **#30 (SERVO native-slip-channel correction) - explicitly NOT changed**, per
+    David's direct answer: "leave as is because the 100% thing was baseline before the
+    test even started." No paper edit made for this item.
+  - **~30 more confirmed Group-4 fixes, each grounded against a real source rather than
+    guessed**: #4 (title "via Current and Slip" → "via Motor Current" - the deployed
+    estimator is current-only; slip is a separate study, not a co-equal model input;
+    Abstract's closing sentence softened to match, #15); #7 (VI-A's "binding...floor"
+    language softened to "a significant signal-to-noise limitation"); #8 (Table XV's
+    "current + freq (linear)" row relabeled "current only, per-freq. (Table X)" to stop
+    contradicting the per-frequency-fit description beneath it); #9/#56 (MAPE's
+    zero-target problem now states the real fold count - four zero-load calibration
+    points, one per frequency, not "the 0 kg calibration point" singular - without
+    inventing an unverified exclusion/epsilon rule, since none exists in any committed
+    script: grepped `tools/model/fit_model.py` and `tools/matlab/generate_figures.m` and
+    confirmed the MAPE values there are a hardcoded array, not a reproducible
+    calculation); #11 (Conclusion now explicitly distinguishes "without an inline
+    torque/load transducer" from "without a shaft-speed sensor" and labels a future
+    slip-based design "shaft-speed-sensor-assisted," not fully sensorless); #12
+    (0 kg redefined as "additional suspended payload mass... relative to the hook +
+    scale baseline," not a claim of zero drivetrain load); #17 (III-G's "steady" flag
+    reworded to mean frequency-stability only, not current/electrical settling); #18
+    (added a sentence on composite-run detection/exclusion, grounded in the real
+    plastic/pliers Oct. 7 reports' own caveats sections); #19 (explicitly distinguished
+    the onboard TEST/STOP session average - which accumulates every steady row with no
+    direction/run-boundary detection - from the PC logger's own per-run splitting);
+    #20 (250 ms recast as nominal, not guaranteed, given blocking Modbus reads with a
+    200 ms timeout); #21 (only `modbus`-sourced rows stated as used for every reported
+    result, never a manual-fallback row); #22 (added the real documented RPM
+    mis-association at the 1.39 Hz no-load baseline session, caught and corrected in
+    `Baseline_Test_Data_2026-10-05` itself, as a concrete illustration of the hand-entry
+    risk); #23 (direction classification at 1.39 Hz now states it was operator-
+    confirmed via a deliberate alternating up/down sequence (plastic) or cross-checked
+    against the no-load/metal data (pliers), since current gave no separation there);
+    #24 (confirmed no fabricated instrument-agreement table was added - the real data
+    for a paired VFD-vs-power-meter comparison doesn't exist as simultaneous logged
+    data, so the text says so directly instead); #27 (separate MAE reporting, folded
+    into the #2/#3 fix above); #28 (added Resistor 2's real per-run current standard
+    deviation, 0.0497 A at 2.90 Hz / 0.0668 A at 4.66 Hz, from
+    `results/2026-10-24_resistorx2/analysis/groups.csv` - the only one of the three
+    blind objects with that per-run breakdown actually retained; said so plainly rather
+    than fabricating figures for the other two); #31 (the two real recaptured SERVO
+    files - the metal/pliers 6.36 Hz export-duplicate bug and the plastic 1.39 Hz noisy
+    capture - now documented with their real cause, from `ServoMachine_Meeting_Notes_
+    2026-11-11`); #32 (added drivetrain-path labeling, "downstream of this rig's own
+    belt-and-drum drivetrain" - a full labeled mechanical-path diagram as the audit also
+    requested is logged as a new B-section item below, not drawn this pass); #35 (Table
+    IV gained P00.22, P01.12/P01.13, P09.01, and P09.04's real numeric code, all pulled
+    from the baseline doc and firmware VFDCHECK); #36 ($385 explicitly relabeled as the
+    cost of the acquired/issued hardware in Table V, not a full-system replacement cost
+    - it excludes the Lucas Nülle motor, SERVO system, bench, and other lab-supplied
+    infrastructure); #38 (the 64.0 in/19.6 s cable-travel figure's derivation corrected
+    - it was circularly using 19.6 s as an input to derive the very circumference it
+    was supposed to produce; now correctly derived forward from the drum's real 15.9 mm
+    waist diameter, newly stated in Section III-C, and explicitly flagged as a no-slip,
+    constant-radius estimate, not a stopwatch measurement); #39 (added an explicit
+    statement that loaded performance between 6.36 and 10.00 Hz was never evaluated and
+    was deliberately descoped, per `ServoMachine_Meeting_Notes_2026-11-11`'s own "Scope
+    Decision"); #47 (VI-B's "Two mechanical constraints" miscount fixed - it already
+    listed three, the third being a measurement-resolution limit, not mechanical);
+    #48 (the 64.0 in usable-cable-travel figure now has its own definition sentence in
+    Section III-C, where it's first introduced, instead of appearing only in the
+    Discussion); #49 (Abstract's error reporting already states MAE in kg alongside the
+    LOOCV band, not a bare unlabeled percentage - confirmed already consistent with the
+    #9 fix); #50 (acronym sweep: V/Hz, USB, PE, AI1, 3D, CAD, USART all now expanded at
+    first use; "Comma-Separated Value (CSV)" → "Comma-Separated Values (CSV)"); #53
+    (V-B's 4.85 Hz note extended to state the exact before/after r² (0.983→0.508) and
+    explicitly flagged as the least reliable of the four lines, since two of the nine
+    blind-test points are matched to it); #57 (added that the 1.39 Hz line's real fitted
+    range tops out at 0.58 kg, not 1.46 kg - confirmed directly from `results/
+    2026-10-07/` [the metal-housing session]: its 1.39 Hz up-direction run logged no
+    current value at all, which is exactly why Table X's own n=3 at that frequency
+    excludes the metal point); #59 (added down-direction slip as a distinct, exploratory
+    observation - it trends toward zero/negative with increasing weight, unlike
+    down-direction current, which doesn't separate by load at all; real numbers pulled
+    from each object's own `groups.csv`); #60 (softened "overhauls the motor regardless
+    of its weight" to describe the actual observed near-zero/negative slip rather than
+    asserting a deterministic causal mechanism).
+  - **#40 (Related Work now actually cites and compares against [2], [9]-[13]) -
+    reverses a long-standing precedent.** David's answer ("updated for IEEE standard")
+    explicitly reverses the A10 precedent recorded elsewhere in this file ("extra
+    references don't need an in-body citation") for these specific references: Section
+    II is rewritten into three comparison groups (model-based speed observers [2]/[11];
+    direct load-torque estimators [3]/[9]/[10]; electrical-quantity regression [12]/
+    [13]) plus a closing paragraph positioning this project against each group by
+    sensor requirement, motor-model dependency, and validated accuracy. This precedent
+    reversal applies specifically to [2]/[9]-[13]; it does not retroactively require
+    citing every reference in every paper this convention has touched.
+  - **#33 (motor delta-wiring)**: David's answer ("not sure if this truly matters, can
+    we just be conservative") - Section III-B's claim is hedged to say the 208 V delta
+    configuration reflects the documented landed-wire/GSoft2-parameter configuration,
+    not a confirmed internal winding-bridge inspection, without asserting more than is
+    actually known.
+  - **#34 (RS-485 transceiver chip identity)**: David's answer ("not sure what you need
+    here") resolved as no paper change needed beyond the existing vendor-image
+    disclaimer (#51) - David said he'd rework the actual cross-reference to A13 himself.
+  - **#42/#43 (narrative restructuring) - judgment call on scope, David said "I agree
+    with audit."** Given the scale of changes already made this batch (a 9-row table,
+    new Table IV rows, a renamed title), full section-letter/number reshuffling into the
+    audit's proposed 7-part order was judged too high-risk for this incremental pass -
+    it would require renumbering Section III/IV and every cross-reference, figure, and
+    table that follows. Implemented instead as a **narrative-clarity fix**: the
+    Introduction already ends with one concrete objective/scope/contributions sentence
+    (addressing #42 directly); a new signpost paragraph was added at the start of
+    Section III-A stating up front, before any hardware detail, that the deployed
+    estimator uses current alone and that slip is a separate, later cross-check -
+    addressing #43's actual concern (the reader "only later learning" the deployed
+    model ignores slip) without moving a single section. Flagged here in case David
+    still wants the full reorder in a future, dedicated pass.
+  - **#44 (subsection renaming + disclaimer)**: "Blind Validation" → "Blind Validation
+    of Current-Based Load Predictions"; "Independent Torque-Based Validation" →
+    "Independent Slip and Torque Cross-Check"; both subsections now state explicitly,
+    at their own start, what they do and don't validate (Part 2 does not validate
+    current-based prediction accuracy; only Part 1 does).
+  - **#51 (vendor-image labeling)**: David's answer ("don't worry about it") - the
+    RS-485 vendor reference image's caption already says "reference only" (done in
+    batch 1); the separate ask to add a new Fig. 4 RS-485-jack close-up/as-built
+    diagram is the closed A4 action item and was not reopened, per David's instruction.
+  - **#54 (Conclusion restructured into three explicit, separated outcomes)**: platform
+    validated end-to-end; current-only estimator insufficient at the tested frequencies/
+    loads (with the real 0.37 kg blind MAE and the separate LOOCV band both stated);
+    slip-assisted estimation identified as a promising but unvalidated future direction
+    - matching #15's own correction (no held-out slip-based mass-prediction model was
+    actually built, so "clear path to a materially better estimator" was softened to
+    "promising direction... though this project did not itself build or validate" one).
+  - **#55 (no invented accuracy requirement)**: David's answer ("there isn't one, this
+    was an attempt at making one and seeing what happened") - confirmed the Abstract/
+    Introduction/Conclusion already frame this as an open research question ("can a
+    low-cost VFD's own telemetry estimate... at a useful accuracy") rather than a
+    pass/fail test against a fabricated numeric spec; no change needed.
+  - **#41 (PAR Systems citation)**: already softened in batch 1's Introduction rewrite
+    to a general telemetry-first precedent rather than evidence for this project's
+    specific sensing method; confirmed still correct, no further change.
+  - **#46 (BOM rod-qty contradiction)**: re-checked against the current document and
+    found already correct (Table V's "Qty Used" = 1, matching the "a single... rod"
+    prose) - this audit item appears to be stale against an earlier revision; no change
+    made.
+  - **#37 (belt-slip mechanism specificity) - assessed, no change**: the real source
+    documents describe the hand-tensioned timing belt slipping under load generically,
+    without distinguishing tooth-skip vs. smooth slip vs. any other specific mechanism;
+    VI-B's existing wording ("the timing belt's tension was set by hand... and it
+    periodically slipped") already avoids conflating this with cable-on-drum or
+    pulley-shaft slip, so no more specific claim was added rather than inventing detail
+    beyond what's documented.
+  - **Logged rather than implemented, as new B-section items (see below)**: #45
+    (figure/diagram readability at printed scale) and #52 (error bars / repeat-run
+    spread on the data figures) - both are real improvements but need new figure
+    artwork, not a text edit, and the directive for this batch was explicit that these
+    should be logged, not attempted.
+  - **Build/verify**: rebuilt (`node build_paper.js`), re-ran the programmatic
+    column-width check (0 violations across 15 tables/15 images against the real
+    5047-twip single-column ceiling, including the new 9-row Table XI and the 3-row-
+    larger Table IV), and did a full cross-reference pass given the scale of this
+    batch: every Fig. 1-14 and Table I-XV number has exactly one caption and at least
+    one matching in-text pointer (re-verified with a fresh text extraction, not by
+    memory); references [1]-[13] all appear in the body exactly where cited and nothing
+    is orphaned; Section V-C-1/V-C-2 cross-references (old "Section V-C, Part N" and
+    new "Section V-C-N" phrasing both still resolve to the same real locations). No
+    section letters or numbers were renumbered this batch (see #42/#43 above), so the
+    cross-reference risk was lower than a full reorder would have carried.
+  - File: `scratchpad/paper_rev0/Sensorless_Load_Estimation_IEEE_Rev14.docx` (still an
+    internal checkpoint, not cut as "Rev 15" - David said more comments may still come).
 
 - **Rev 14: implemented the external technical/editorial audit's "comply" items** —
   David forwarded a detailed outside review of Rev 12 (30 numbered technical findings
@@ -706,7 +959,11 @@ call on whether to do even the one-sentence version.
   needed") resolved as: remove. The Utrata and Rolek [2] MRAS-speed-estimator sentence
   was cut from Section II; reference [2] stays in the References list uncited,
   consistent with the A10 precedent that extra references don't need an in-body
-  citation.
+  citation. **Superseded, Rev 14 batch 2**: David's answer to audit item #40
+  explicitly reverses this precedent for [2] and [9]-[13] specifically - Section II
+  was rewritten to cite and comparatively discuss all of them (see the Rev 14 batch 2
+  entry above). This entry is kept for history; don't treat "extra references don't
+  need an in-body citation" as still true for these particular references.
 - **Blind Validation and Independent Torque-Based Validation merged under one
   Validation section (Rev 10)** — David's comment on the torque-validation heading
   asked whether it could be grouped with Blind Validation "within the same chapter."

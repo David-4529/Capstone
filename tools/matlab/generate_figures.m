@@ -293,27 +293,31 @@ close(fig);
 
 % ============================================================================
 % Figure 10 (paper Fig. 10): Blind validation - predicted vs. actual
-% Transcribed from Table VIII of the paper (Resistor 1/2, T-housing - these
-% sessions' raw data was analyzed ad hoc and is not checked into results/ as a
-% groups.csv).
+% Transcribed from Table XI of the paper (Resistor 1, Resistor 2, T-housing -
+% three sequential sessions, nine points total; these sessions' raw data was
+% analyzed ad hoc and is not checked into results/ as a groups.csv, except for
+% Resistor 2's, which is in results/2026-10-24_resistorx2/analysis/groups.csv).
+% T-housing was tested at five frequencies (not two) against the model as
+% updated after Resistor 2's weight was folded into calibration; see Table XI.
 % ============================================================================
-actual =    [0.64, 0.64, 0.82, 0.82, 0.54, 0.54];
-predicted = [0.27, 0.18, 0.87, 0.00, 0.54, 0.00];
+actual =    [0.64, 0.64, 0.82, 0.82, 0.54, 0.54, 0.54, 0.54, 0.54];
+predicted = [0.27, 0.18, 0.87, 0.00, 0.80, 1.05, 0.25, 0.54, 0.00];
 % Note: deliberately no '@' in these labels - Octave's gnuplot backend treats
 % it as a text-escape character and mangles the following characters.
 labels =    {'Resistor 1, 1.44 Hz','Resistor 1, 6.21 Hz','Resistor 2, 2.90 Hz', ...
-             'Resistor 2, 4.66 Hz','T-housing, 5.63 Hz','T-housing, 6.81 Hz'};
+             'Resistor 2, 4.66 Hz','T-housing, 1.08 Hz','T-housing, 3.33 Hz', ...
+             'T-housing, 5.55 Hz','T-housing, 5.63 Hz','T-housing, 6.81 Hz'};
 
-fig = figure('Visible', 'off', 'Position', [0 0 950 620]);
+fig = figure('Visible', 'off', 'Position', [0 0 950 680]);
 hold on;
-plot([0 1], [0 1], 'k--', 'LineWidth', 1, 'DisplayName', 'Perfect prediction (y = x)');
+plot([0 1.2], [0 1.2], 'k--', 'LineWidth', 1, 'DisplayName', 'Perfect prediction (y = x)');
 plot(actual, predicted, 'o', 'MarkerSize', 10, 'MarkerFaceColor', 'k', 'MarkerEdgeColor', 'k', 'DisplayName', 'Blind validation point');
 for i = 1:numel(actual)
-  text(actual(i) + 0.045, predicted(i), labels{i}, 'FontSize', 11, 'VerticalAlignment', 'middle');
+  text(actual(i) + 0.03, predicted(i), labels{i}, 'FontSize', 10, 'VerticalAlignment', 'middle');
 end
 xlabel('Actual Load (kg)'); ylabel('Predicted Load (kg)');
-title('Blind Validation: Predicted vs. Actual Load');
-xlim([0 1.3]); ylim([0 1]); legend('Location', 'northwest'); grid on;
+title('Blind Validation: Predicted vs. Actual Load (9 Points, 3 Sessions)');
+xlim([0 1.3]); ylim([0 1.2]); legend('Location', 'northwest'); grid on;
 saveas(fig, fullfile(OUT_DIR, 'fig6_blind_validation.png'));
 close(fig);
 
