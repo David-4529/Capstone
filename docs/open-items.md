@@ -4,9 +4,10 @@ The data-acquisition and communication platform is built, wired, and validated
 end-to-end on real hardware (STM32 Nucleo-F401RE, RS-485 transceiver to the VFD, PC-side
 logger). What remains falls into two groups: things that need an action from David
 (Section A) and lower-priority/deferred work (Section B). Every item below is cross-
-checked against the current paper (`Sensorless_Load_Estimation_IEEE_Rev13.docx`) and
-all four deliverables as of Rev 13 for the paper (the decks and lab manual are still at
-their Rev 9/pre-review state - explicitly frozen until David reviews the paper). Note:
+checked against the current paper (`Sensorless_Load_Estimation_IEEE_Rev16.docx`); the
+decks and lab manual are still at their Rev 13/pre-review state (see the Resolved
+section below for exactly what's synced where) - explicitly frozen until David reviews
+the paper further. Note:
 David has said the .docx is the only deliverable he wants going forward for the paper -
 the PDF is still generated internally for page-render visual verification, but is no
 longer something to send him.
@@ -18,6 +19,11 @@ Flagged in David's Rev 3 review comments: "This figure needs to be worked, let's
 together on what this should look like." Not auto-edited — the current version (drawn
 by `tools/matlab/generate_figures.m`, boxes for PC Logger/STM32/MAX485/VFD/Motor+Load)
 stays as a placeholder in the paper until we talk through what it should actually show.
+**Added scope (second independent Rev 15 audit, #39)**: when reworked, this diagram
+should also show the real inference pipeline downstream of the telemetry link - PC
+logger -> run averaging -> model selection -> regression -> clamping -> comparison -
+and make visually explicit that the STM32 itself performs no prediction, not just the
+acquisition/logging path currently drawn.
 
 ### A8. Real motor torque/breakdown-torque curves from Lucas Nülle
 Surfaced in the Rev 9 Word review (comment on Section III-B): David says he has his own
@@ -143,12 +149,10 @@ so our numbers stop being approximations. Real spec, US-letter page (612pt x 792
   text; sweeping the existing deliverables for any already-present em dashes is part of
   what needs doing on the next revision pass (see A16), not a standalone fix right now.
 
-### A16. Next paper revision: roll up pending fixes, wait for David's comments
-David's call: hold off rebuilding until he gives more comments, then do the next
-revision as one batch covering everything accumulated since Rev 14, at minimum:
-A15 (BOM rod qty, 1 not 2) and the new no-em-dash rule (strip any that already exist
-across the paper and sweep for them going forward). Add whatever else David's next
-round of comments brings before rebuilding.
+### A16. Next paper revision: roll up pending fixes, wait for David's comments - DONE
+Fulfilled: Rev 15 was cut covering everything accumulated since Rev 14 (A15, the
+no-em-dash sweep, and David's 8 direct answers to the 60-item audit). See Resolved
+below.
 
 ### A13. Fig. 5 (RS-485 transceiver signal-mapping diagram) needs David's own rework
 Comment 254 on the Rev 9 markup: "Figure 4 needs work, I need to fix prior to you
@@ -228,6 +232,165 @@ building the model. Staying logged here as optional, not blocking, pending David
 call on whether to do even the one-sentence version.
 
 ## Resolved
+
+- **Rev 16 (second independent 45-item audit of Rev 15 + an independently-discovered
+  root-cause finding of my own)** — David forwarded a second, independent technical
+  audit of Rev 15 (`IEEE_Rev15_Independent_Audit_Comments.txt`, sections A Critical/
+  Confirmed #1-14, B Physics/Sensors #15-25, C STM32/Pipeline #26-36, D Literature/
+  Formatting #37-45, plus a Section E list of corrections already verified improved
+  from Rev 14). Gave David a full comply/defend verdict on every item in chat first;
+  this entry covers what was actually implemented into `build_paper.js` and
+  `tools/matlab/generate_figures.m`, producing Rev 16.
+  - **The single biggest fix this pass - found independently, not flagged by either
+    audit**: before implementing anything, I rebuilt the real 17-point calibration
+    dataset directly from `results/*/analysis/groups.csv`, sanity-checked it two ways
+    against already-known-correct numbers (reproduced the pre-Resistor-2 2.44 Hz
+    coefficients 9.7665/-4.6141 exactly, and the 4.85 Hz r² collapse to 0.5077
+    exactly), then ran real leave-one-out cross-validation myself. Result: Table XV's
+    four published numbers (0.406/52.0, 0.464/56.8, 0.435/56.5, 0.494/61.7) ARE
+    exactly reproducible - but NOT from "the per-frequency linear fit already used
+    throughout this paper (Table X)" as Section V-D's prose claimed. That description
+    belongs to a different, much better-performing model that was never in Table XV
+    at all: the real deployed per-frequency model's own LOOCV is **0.207 kg MAE /
+    31.5% MAPE** - roughly half the error of every model actually in the table. The
+    four existing rows are a different thing entirely: single *global* regressions
+    that combine current and frequency as continuous inputs (no per-frequency split),
+    of increasing complexity (current+freq linear; +interaction; +quadratic freq,
+    skipping interaction; full = interaction+quadratic together) - confirmed exact
+    via a new committed script, `tools/model/cross_validate.py` (also writes
+    `tools/model/cross_validation.json`), which exactly reproduces all four published
+    numbers using the real calibration data and real (unbucketed) frequencies. This
+    resolves audit #4 (Fig. 14's "current + freq (linear)" bar label was actually
+    already correct all along - it was V-D's prose that mislabeled Model 1, not the
+    figure), #5 (model forms now precisely defined with real formulas), #6 (MAPE
+    defined explicitly as computed over the 13 of 17 nonzero-load points), #10 (the
+    "real signal-to-noise limit, not a modeling gap" conclusion was backwards - the
+    deployed per-frequency split IS what works; a global model never recovers it
+    regardless of complexity), and #27 (a real, rerunnable script now exists; no more
+    "numbers used directly" with no reproducible source). Table XV gained a new first
+    row ("per-freq. (deployed, Table X)", 0.207/31.5); Fig. 14 regenerated with five
+    bars (the deployed model visually distinguished in darker gray); Section V-D, the
+    VI-A "practical upshot" paragraph, the Abstract, and the Conclusion all rewritten
+    to state the corrected framing instead of the old "every model form lands in the
+    same ~50% band" claim.
+  - **#2 (Resistor 2 @ 2.90 Hz prediction didn't reproduce) - confirmed, fixed**: my
+    own recompute (same pre-fold 2.44 Hz coefficients above, applied to the real
+    0.554 A current) gives 0.7965 -> 0.80 kg, not the published 0.87 kg. Table XI's
+    row corrected (Pred. 0.87->0.80, Error +0.05-> -0.02); the headline nine-point
+    blind MAE changed from 0.37 kg to **0.36 kg** (3.27/9 kg, not 3.30/9) - swept
+    every instance of this specific statistic (Abstract, V-C-1, Conclusion) while
+    deliberately leaving the unrelated "0.37 kg" instances alone (the motor's 0.37 kW
+    rating, Resistor 1's -0.37 kg offset-undershoot, and the real "0.37 kg WITH the
+    trial +0.0406 A offset" figure from #1 below, which is a different number that
+    legitimately still belongs in the text).
+  - **#1 (4.66 Hz offset-trial wording) fixed**: "clamped to 0.00 kg either way" was
+    wrong - the Oct. 24 report shows 0.00 kg without the trial offset and 0.37 kg with
+    it (the offset changed this prediction, just didn't make it accurate). Reworded to
+    state both values and that distinction explicitly.
+  - **#11/#12 (chronological model-state split) added**: Table XI gained a "Model"
+    column (Orig. for Resistor 1/2's four rows, Updated for T-housing's five) plus a
+    footnote giving each subset's own MAE (0.42 kg / 0.32 kg) and stating plainly
+    these aren't one consistent-model result.
+  - **#7 (IV-B vs. V-C-1 self-contradiction on extrapolation) fixed**: IV-B previously
+    said "no extrapolation beyond" the calibration range while V-C-1 called two points
+    true extrapolations. IV-B reworded to "nearest-frequency model selection...
+    including endpoint-model substitution outside the calibration-frequency range; no
+    coefficient interpolation is performed" - an unsupported region, not a validated
+    extrapolation mechanism.
+  - **#8 + #15 (same root Abstract sentence, two separate audit items) fixed**: "slip
+    and shaft torque corroborated the underlying slip-load relationship the model
+    depends on" was wrong twice - the current-only regression doesn't depend on slip
+    at all, and torque (per the paper's own Table XIII) didn't corroborate anything,
+    it stayed flat regardless of weight. Rewritten throughout (Abstract, Conclusion)
+    to say slip alone corroborates the relationship motivating future work, torque did
+    not resolve the load differences, and neither measurement enters or validates the
+    regression actually used.
+  - **#9 (Table IX misused for a load-sensitivity claim) fixed**: Table IX is a
+    no-load baseline only and can't show sensitivity to load *changes*. Conclusion's
+    "slip is substantially more load-sensitive than current at every test frequency"
+    re-anchored to Table XII/XIV (the real loaded, multi-object data), with the known
+    1.39 Hz ordering inversion now stated alongside it rather than smoothed over.
+  - **#13 (4.85 Hz zero-load bias) fixed**: added an explicit statement that this line
+    (+0.364 kg at its own no-load current) is not a defensible zero-load detector.
+  - **#14 (4.85 Hz current-span traceability) fixed**: stated the 0.135 A span
+    includes the frequency-binned Resistor 2 point, and gave the narrower 0.119 A
+    span across just the four original same-session objects.
+  - **#3 (binned-fit clarity), #17 (ideal-vs-measured torque wording), #18 (4.85 Hz
+    near-tie + inversion), #19 (small-slip-approximation regime caveat), #20 (pliers
+    direction-assignment circularity), #21 (down-direction current claim, with real
+    numbers), #22 (overhaul wording), #23 (Resistor 2 std-dev source citation), #24
+    (mass-range stated alongside the nine-point count), #25 (no-formal-tolerance
+    statement), #28 (VFDCHECK scope narrowed to the exact parameters
+    `CheckVfdPotControl()` in `main.c` actually checks - P00.20/P00.21/P03.00/P00.22/
+    P01.10/P01.12/P01.13 plus a frequency read-back - with P01.02/P05.04/P09.01/
+    P09.04 named as GSoft2-only), #29/#30 (PC-logger RPM pairing stated as the
+    intended workflow with its one documented historical exception), #34 (named the
+    real operator stop method - releasing FWD/REV - instead of implying the
+    frequency cap alone is over-travel protection), #37 (Kroičs/Hafezi [9] - verified
+    via its real published abstract, which explicitly does NOT require an accurate
+    motor model; Related Work corrected to stop grouping it with the
+    observer-based [10], and to credit it as the closer low-cost precedent), #38
+    (Dias/Fontenele [3] comparison softened - different machine/sensor/task, not a
+    numeric ranking against this paper's MAE), #42 (DE/RE and RO/DI given full Title
+    Case expansions at first use; USART expanded at its true first occurrence instead
+    of after USART1/USART2 were already used bare), #45 (III-A's redundant
+    Introduction-repeating roadmap trimmed to two sentences)** - all confirmed against
+    real source text/data and fixed; verified in the rebuilt Rev 16 text directly, not
+    just asserted.
+  - **#33 (BOM: 5 mm pulley bore vs. 8 mm rod) - David's answer: 8 mm.** Table V's
+    pulley row corrected from "5 mm bore" to "8 mm bore."
+  - **#44 (BOM: rod qty/price reconciliation) - David's answer: a two-pack was bought
+    for $34.57, only one rod used.** Added a clarifying sentence in the body text
+    right after Table V; Qty Used stays 1 (correct - that's what's installed), Total
+    Price stays $34.57 (correct - that's the real amount paid for the two-pack); the
+    $385 grand total is unaffected either way.
+  - **#26 (MAX485 vs. 3.3 V contradiction) - checked, no paper change needed.** Grepped
+    the actual paper text for "MAX485": it never appears - Table VI/BOM/body text
+    already say "RS-485 transceiver module/chip" generically throughout, so the
+    audit's contradiction (an unverified 5 V-only part name paired with a 3.3 V
+    claim) doesn't actually exist in the paper's visible text. The literal "MAX485"
+    string exists only as an internal image filename
+    (`max485_module_ref.jpg`, never shown to a reader) and as a firmware code comment
+    (`firmware/stm32/Core/Src/main.c`, "DE/RE-tied MAX485 module") - the latter is
+    real but out of this pass's scope (paper text only); noting it here rather than
+    silently leaving it unflagged.
+  - **#39 (Fig. 1 should show the real inference pipeline) - logged against the
+    existing A1 task**, not acted on now (Fig. 1 stays David's own "let's work on this
+    together" item) - see A1 above for the added scope note.
+  - **#40 (figure/diagram readability) and #41 (vendor-image attribution) - already
+    covered.** #40 duplicates the already-logged B4; #41's vendor-image caption
+    already says "Vendor reference image only" without overclaiming a specific
+    manufacturer/model, which is the correct level of specificity given none is
+    actually known - left as is.
+  - **#16, #31, #32, #35, #36 - unresolved, same reasons as before.** #16 (exact
+    torque-sensor mechanical path) - still unverifiable without an as-built diagram;
+    same status as the prior audit's identical question, which David already
+    answered "not sure, can we just be conservative" - no new information this pass.
+    #31 (steady-state/plateau exclusion counts), #32 (as-built wiring diagram beyond
+    Fig. 5 - the closed A4 item), #35 (per-row traceability table), #36 (Modbus
+    success-rate quantification) all need either new analysis code/data not currently
+    committed, or a hardware diagram David said he'd do himself (A13) - left open,
+    not guessed at.
+  - **Build/verify**: rebuilt (`node build_paper.js` after regenerating Figs. 11 and
+    14 via `octave tools/matlab/generate_figures.m`, copying the new PNGs into
+    `paper_rev0/assets/`, and updating their real pixel dimensions in
+    `build_paper.js`'s image table). Verified by unzipping the fresh Rev 16 docx,
+    extracting `word/document.xml` to plain text, and grepping every fix above
+    directly in that output (not trusting the edit calls alone) - confirmed every
+    "0.37 kg" instance is one of the legitimate unrelated numbers and the blind MAE
+    itself now reads "0.36 kg" everywhere; confirmed Table XV's 5 rows, Table XI's
+    corrected Resistor 2 row and new Model column, Table V's "8 mm bore," and the
+    USART/DE-RE/RO-DI acronym fixes all landed. Rendered all 14 pages to PNG via
+    LibreOffice and visually checked the Abstract, Related Work, Table V, Table
+    IX-XV, and Fig. 11/14 pages directly - no overflow, no stretched images, no
+    broken tables (page count grew 13->14 from the added content, not a layout bug).
+    All 15 embedded media files checked valid (none corrupted) via `file`.
+  - File: `scratchpad/paper_rev0/Sensorless_Load_Estimation_IEEE_Rev16.docx`.
+  - New file: `tools/model/cross_validate.py` (+ its `cross_validation.json` output) -
+    the first real, committed, rerunnable LOOCV implementation for this project;
+    previously no such script existed anywhere in git history for any of the four
+    model forms in Table XV, which is exactly what made the Model 1 mislabeling
+    above possible to miss for two revisions.
 
 - **Rev 14 batch 1 (first round of comments on Rev 14, 14 comments + 1 tracked
   insert)** — internal checkpoint applied directly to `build_paper.js`, not yet cut as

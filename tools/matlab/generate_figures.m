@@ -58,11 +58,13 @@
 %
 % Fig. 1/5 are drawn schematics (wiring per docs/wiring.md + Table III). Fig. 8/9/10 are
 % computed directly from the real groups.csv files checked into the repo (genuine
-% recomputation, not hardcoded). Fig. 11/14 reproduce the already-reported blind-
-% validation and LOOCV results (Tables VIII/XII of the paper) - those specific held-out
-% sessions were analyzed ad hoc and are not re-derivable from a groups.csv in this
-% repo, so their numbers are transcribed here from the paper with a comment at each
-% one, not recomputed.
+% recomputation, not hardcoded). Fig. 11 reproduces the already-reported blind-
+% validation results (Table XI of the paper) - those specific held-out sessions were
+% analyzed ad hoc and are not re-derivable from a groups.csv in this repo, so its
+% numbers are transcribed here from the paper with a comment, not recomputed. Fig. 14
+% IS reproducible: its numbers come directly from tools/model/cross_validate.py, a
+% real committed LOOCV script, and are only transcribed into this plotting code
+% rather than recomputed in Octave to avoid porting that fitting/CV logic twice.
 %
 % Rev 10: down-direction (lowering) slip/current data removed from the baseline figure
 % entirely - the motor has no dynamic braking, so down-direction readings were never
@@ -301,7 +303,7 @@ close(fig);
 % updated after Resistor 2's weight was folded into calibration; see Table XI.
 % ============================================================================
 actual =    [0.64, 0.64, 0.82, 0.82, 0.54, 0.54, 0.54, 0.54, 0.54];
-predicted = [0.27, 0.18, 0.87, 0.00, 0.80, 1.05, 0.25, 0.54, 0.00];
+predicted = [0.27, 0.18, 0.80, 0.00, 0.80, 1.05, 0.25, 0.54, 0.00];
 % Note: deliberately no '@' in these labels - Octave's gnuplot backend treats
 % it as a text-escape character and mangles the following characters.
 labels =    {'Resistor 1, 1.44 Hz','Resistor 1, 6.21 Hz','Resistor 2, 2.90 Hz', ...
@@ -322,18 +324,30 @@ saveas(fig, fullfile(OUT_DIR, 'fig6_blind_validation.png'));
 close(fig);
 
 % ============================================================================
-% Figure 13 (paper Fig. 13): LOOCV error by model form
-% Transcribed from Table XII of the paper (leave-one-out cross-validation across
-% all 17 real calibration points - the exact procedure tools/model/fit_model.py
-% uses; reproducing it here would require porting that fitting/CV logic to Octave,
-% not just replotting its output, so the reported numbers are used directly).
+% Figure 14 (paper Fig. 14): LOOCV error by model form
+% Reproduced from tools/model/cross_validate.py's real leave-one-out cross-
+% validation across all 17 real calibration points (run it directly: python
+% tools/model/cross_validate.py / tools/model/cross_validation.json) - the
+% deployed per-frequency model plus four global current+frequency regressions
+% of increasing complexity; reproducing that fitting/CV logic in Octave would
+% just replot the same numbers, so they are transcribed here with the script
+% cited as the reproducible source.
 % ============================================================================
-model_forms = {'current + freq\n(linear)', '+ interaction\nterm', '+ quadratic\nfreq', 'full\n(all terms)'};
-mape = [52.0, 56.8, 56.5, 61.7];
+model_forms = {'per-freq\n(deployed)', 'current+freq\n(linear)', '+ interaction\nterm', '+ quadratic\nfreq', 'full\n(all terms)'};
+mape = [31.5, 52.0, 56.8, 56.5, 61.7];
+is_deployed = [true, false, false, false, false];
 
-fig = figure('Visible', 'off', 'Position', [0 0 900 620]);
-bar(mape, 'FaceColor', [0.75 0.75 0.75], 'EdgeColor', 'k', 'LineWidth', 1.2);
-set(gca, 'XTickLabel', model_forms, 'Position', [0.10 0.24 0.86 0.62]);
+fig = figure('Visible', 'off', 'Position', [0 0 950 620]);
+hold on;
+for i = 1:numel(mape)
+  if is_deployed(i)
+    bar(i, mape(i), 'FaceColor', [0.35 0.35 0.35], 'EdgeColor', 'k', 'LineWidth', 1.2);
+  else
+    bar(i, mape(i), 'FaceColor', [0.75 0.75 0.75], 'EdgeColor', 'k', 'LineWidth', 1.2);
+  end
+end
+set(gca, 'XTick', 1:numel(mape), 'XTickLabel', model_forms, 'Position', [0.10 0.24 0.86 0.62]);
+xlim([0.4, numel(mape) + 0.6]);
 ylabel('MAPE (%)');
 title('LOOCV Error by Model Form');
 ylim([0 70]); grid on;
