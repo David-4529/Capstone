@@ -59,10 +59,6 @@ edits of the paper, not just the passages they were originally flagged on.
   see `build_paper.js`'s own constants), handling any short-stretch pagination
   awkwardness with paragraph/row "keep together" properties instead of abandoning
   columns - not just shrinking individual images while leaving the section single-column.
-- **Spell out every acronym's expansion in Title Case** (e.g. "Variable Frequency
-  Drive," not "variable frequency drive") **before the parenthesized acronym.** New
-  rule, Rev 11 review (comment 1): "All acrynms spelled out, the first letter needs to
-  be captilzed."
 - **Don't call out specific calendar dates in body text** (e.g. "Oct. 24, 2026") -
   describe sessions by what they were, not when they happened.
 - **Torque is reported in N·m, not mN·m.** Reverses the Rev 9 engineering-notation
@@ -73,9 +69,36 @@ edits of the paper, not just the passages they were originally flagged on.
   the body text** - before cutting or keeping a figure/table, confirm there's a sentence
   that actually points to it (e.g. "(Fig. 8)" / "(Table VII)"); orphaned figures/tables
   get removed or given a proper callout.
-- **Spell out every acronym in full at first use, with the acronym in parentheses
-  immediately after** - reinforces the existing standing rule; this round caught CNN,
-  RTU, and UART missing their expansion despite being used as bare acronyms later.
+### Acronym formatting and consistency - strict rule
+David's explicit instruction, to be treated as strict going forward: review the
+entire document (abstract, introduction, body, tables, figures, captions, conclusion -
+every part, no exceptions) and ensure every acronym/abbreviation follows all of these:
+
+1. **First occurrence**: every acronym is spelled out in full the first time it
+   appears, immediately followed by the acronym in parentheses - e.g. "Universal
+   Asynchronous Receiver-Transmitter (UART)", "Variable Frequency Drive (VFD)",
+   "Programmable Logic Controller (PLC)".
+2. **Capitalization**: the spelled-out expansion uses Title Case - capitalize the
+   first letter of every major word, including technical terms. Correct: "Variable
+   Frequency Drive (VFD)". Incorrect: "variable frequency drive (VFD)".
+3. **Subsequent occurrences**: after an acronym is defined, every later occurrence
+   uses only the acronym itself - never re-spell it out, never redefine it again.
+4. **Consistency everywhere**: applies uniformly across the whole document, not just
+   running prose - the abstract, tables, figure/table captions, and conclusion all
+   count the same as body text for first-use purposes. The Abstract's own first use
+   does not "cover" the body - the body text defines the acronym again at its own
+   first occurrence, independent of what the Abstract already did.
+5. **Technical accuracy**: every acronym's expansion must correspond to its real,
+   correct technical definition - never invent a definition or alter established
+   terminology to make the formatting work.
+6. **Exemption**: standard unit/symbol abbreviations don't need spelling out - IEEE,
+   SI, MKS, CGS, dc, rms, ac, and similar.
+
+Final-review checklist before any revision counts as acronym-clean: every acronym
+defined at its first occurrence; every expansion in Title Case; every subsequent
+occurrence bare; no acronym redefined a second time; every definition technically
+accurate. This rule governs acronym formatting and usage ONLY - it does not license
+changing any technical meaning, calculation, equation, or other content.
 
 ### Rules pulled from the official IEEE conference Word template
 David supplied the actual IEEE conference template (`conference-template-letter_2.docx`)
@@ -105,9 +128,6 @@ so our numbers stop being approximations. Real spec, US-letter page (612pt x 792
 - **Reference-list titles use sentence case** (capitalize only the first word and proper
   nouns), not Title Case - our current References list is Title Case and needs
   rechecking against this.
-- **Acronyms/abbreviations must be defined at first use in the body text even if already
-  defined in the Abstract** - the Abstract doesn't "cover" the body's first use.
-  IEEE/SI/MKS/CGS/dc/rms/ac don't need defining.
 - **Always use a leading zero before a decimal** ("0.25", not ".25").
 - **"Data" is plural** ("the data are", not "the data is").
 - Equation numbers sit flush-right in parentheses; italicize Roman variable symbols
