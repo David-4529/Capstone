@@ -19,25 +19,6 @@ together on what this should look like." Not auto-edited — the current version
 by `tools/matlab/generate_figures.m`, boxes for PC Logger/STM32/MAX485/VFD/Motor+Load)
 stays as a placeholder in the paper until we talk through what it should actually show.
 
-### A3. Source two stock photos for the major deck
-Two slides in `Sensorless_Load_Estimation_Deck_Rev6.pptx` still show a dashed
-placeholder box instead of a real image, since neither is a photo of this project's
-own hardware:
-- **"Our Approach" slide:** a generic photo of a dedicated torque transducer / load
-  cell, for cost contrast against this project's sensorless approach.
-- **"Our Approach" slide:** a photo or logo of PAR Systems' anti-sway crane product
-  (the commercial telemetry-first precedent cited as reference [1]).
-Any representative stock photo or the vendor's own product image works for both.
-
-### A5. Dedicated VFD and controller photos for the major deck's Hardware Platform table
-Surfaced during the Rev 7 deck redesign. `Sensorless_Load_Estimation_Deck_Rev7.pptx`,
-"Hardware Platform" slide (Table I), still shows red `[photo needed]` placeholders for
-the VFD and STM32 Nucleo-F401RE rows - only the Motor row has a photo. The deck does
-have a wide shot of the fully-wired VFD (`vfd_wired.jpg`, used as Fig. 3 elsewhere),
-but it's a multi-component shot (VFD + motor + control station), not a clean
-per-item identification photo, so it wasn't reused here rather than mislabel it.
-Distinct from A4 (RJ45 jack close-up specifically).
-
 ### A8. Real motor torque/breakdown-torque curves from Lucas Nülle
 Surfaced in the Rev 9 Word review (comment on Section III-B): David says he has his own
 action to pull real torque-speed curve data for the SE2673-1K7 (not from a published
@@ -176,14 +157,6 @@ Cost, if priced per-unit rather than per-pack) at that point.
 ### B1. Lab manual (instructor + student editions)
 Explicitly deprioritized — lowest priority in the current backlog. Needs to match the
 Summer 2026 VFD lab manual's format and document the STM32 GPIO pinout.
-
-### B2. Simple web dashboard
-Idea for after validation data is in a steadier state: show live/logged load readings
-and the model's estimated weight (slip-based and current-based side by side), reading
-off the same CSV stream the STM32 already produces. Would need a way to get that
-serial stream onto something that can host a web page — a small script on the PC
-already running the serial monitor, or networking added to the controller itself (out
-of scope for the bare Nucleo without an added Ethernet/WiFi module).
 
 ### B3. Mass-to-torque mechanical model - David asked whether this is really needed
 Surfaced by an external technical audit of Rev 12 (finding T11): the paper reports
