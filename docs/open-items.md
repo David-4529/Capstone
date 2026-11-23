@@ -131,6 +131,18 @@ so our numbers stop being approximations. Real spec, US-letter page (612pt x 792
 - **"Data" is plural** ("the data are", not "the data is").
 - Equation numbers sit flush-right in parentheses; italicize Roman variable symbols
   (not Greek symbols); use a true minus sign/long dash, not a hyphen, in equations.
+- **No em dashes (—) in any deliverable** - paper, decks, lab manual, all of it. David's
+  explicit new rule. Use a hyphen with spaces, a colon, or a comma/parenthetical instead,
+  whichever reads most naturally in context. Applies going forward to all new/edited
+  text; sweeping the existing deliverables for any already-present em dashes is part of
+  what needs doing on the next revision pass (see A16), not a standalone fix right now.
+
+### A16. Next paper revision: roll up pending fixes, wait for David's comments
+David's call: hold off rebuilding until he gives more comments, then do the next
+revision as one batch covering everything accumulated since Rev 14, at minimum:
+A15 (BOM rod qty, 1 not 2) and the new no-em-dash rule (strip any that already exist
+across the paper and sweep for them going forward). Add whatever else David's next
+round of comments brings before rebuilding.
 
 ### A13. Fig. 5 (RS-485 transceiver signal-mapping diagram) needs David's own rework
 Comment 254 on the Rev 9 markup: "Figure 4 needs work, I need to fix prior to you
