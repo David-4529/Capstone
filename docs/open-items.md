@@ -85,9 +85,14 @@ every part, no exceptions) and ensure every acronym/abbreviation follows all of 
    uses only the acronym itself - never re-spell it out, never redefine it again.
 4. **Consistency everywhere**: applies uniformly across the whole document, not just
    running prose - the abstract, tables, figure/table captions, and conclusion all
-   count the same as body text for first-use purposes. The Abstract's own first use
-   does not "cover" the body - the body text defines the acronym again at its own
-   first occurrence, independent of what the Abstract already did.
+   count the same as body text for first-use purposes. **Reversed by David (Rev 14
+   batch 1 review, comment 2 on "RTU is already called out before hand"): the
+   Abstract's first use DOES cover the body.** Once an acronym is defined anywhere in
+   the document, abstract included, every later occurrence anywhere else uses the bare
+   acronym only - no second full expansion anywhere, full stop. (This replaces the
+   opposite provision that was here before Rev 14 batch 1; David's RTU/VFD example in
+   the Introduction's Fig. 1 description was the first real instance of the old
+   provision, caught and fixed.)
 5. **Technical accuracy**: every acronym's expansion must correspond to its real,
    correct technical definition - never invent a definition or alter established
    terminology to make the formatting work.
@@ -152,13 +157,6 @@ renumbering - it's the drawn VFD RJ45 -> transceiver -> STM32 pin-mapping diagra
 `tools/matlab/generate_figures.m`'s `fig2_rs485_wiring.png`). Left untouched beyond the
 MAX485-label rename (Rev 11) since David said he'd provide the update himself.
 
-### A15. Fix BOM qty for the linear rod: 1, not 2 (confirmed by David)
-Surfaced by an external technical audit of Rev 12 (finding T13): Section III-C's prose
-says "a single 8 mm hardened steel linear rod," but Table V (Bill of Materials) listed
-"8 mm x 800 mm linear rod" at Qty Used = 2. David confirmed: 1 rod was actually used -
-the prose is correct, the BOM's qty is wrong. His call: update on the next paper
-revision rather than as an isolated edit now - fix Table V's Qty Used to 1 (and its
-Cost, if priced per-unit rather than per-pack) at that point.
 
 ## Standing rules (process)
 
@@ -198,6 +196,89 @@ building the model. Staying logged here as optional, not blocking, pending David
 call on whether to do even the one-sentence version.
 
 ## Resolved
+
+- **Rev 14 batch 1 (first round of comments on Rev 14, 14 comments + 1 tracked
+  insert)** — internal checkpoint applied directly to `build_paper.js`, not yet cut as
+  a numbered revision since David said more comments are coming before "Rev 15."
+  - **A15 (BOM rod qty) fixed**: Table V's "8 mm x 800 mm linear rod" row changed from
+    Qty Used 2 to 1, matching the prose ("a single... rod") and David's confirmation.
+    Price left at $34.57 (assumption: that figure was already the real line cost paid,
+    not a per-unit price needing to be halved - flagged as an assumption, not verified
+    against a receipt).
+  - **Comment 7, BOM total simplified back to one figure**: David's direct call -
+    "just say the total cost is 385 dollars, don't worry about calling out the
+    117.14." Reverses the Rev 14 fix that added the $117.14-vs-$385 distinction back
+    in; the new sentence says "Total project cost was $385" (neutral phrasing,
+    avoiding the original "out-of-pocket" mislabeling error) rather than restating the
+    split.
+  - **Standing rule reversed (comment 2)**: "Abstract's first use covers the body" -
+    see the "Acronym formatting and consistency" standing rule above for the exact
+    wording change. Applied throughout: the Introduction's "Variable Frequency Drive
+    (VFD)" and "Remote Terminal Unit (RTU)" (both already defined in the Abstract) are
+    now bare "VFD"/"RTU" at that spot. A full sweep for other duplicate expansions
+    found none remaining (checked every acronym's full-expansion phrase for a second
+    occurrence).
+  - **Comment 9, Fig. 3 image swapped**: David's first upload didn't actually contain
+    the cropped image he described (confirmed by hash - byte-identical to the old
+    file); he resupplied it directly and it's now in
+    `scratchpad/paper_rev0/assets/drum_cad_cropped.png` (239x139px), sized via the
+    real aspect ratio at a smaller footprint than the old square crop, consistent with
+    "take up less space."
+  - **Comment 14 (SERVO validation framing) resolved**: David's position was that "the
+    whole point of the servo machine results was to verify the predictive modeling
+    accuracy." Technical fact that doesn't support that literally: the SERVO sessions
+    never recorded current at all (only torque and speed/slip), so there is no data
+    that could check the current-based regression's (load_kg = a·current + b) own
+    prediction accuracy. Resolved with compromise wording (Abstract, Conclusion) that
+    keeps the SERVO results real evidentiary weight - confirming the slip-load
+    relationship the predictive model depends on holds up under a second, independent
+    instrument, supporting confidence in the model's physical basis - while being
+    explicit that this is distinct from the blind validation tests, which are what
+    actually check the regression's own prediction accuracy.
+  - **Comment 11 (USART2) fixed two ways**: the expansion "Universal
+    Synchronous/Asynchronous Receiver/Transmitter" moved to its true first occurrence
+    (Section III-D, where "USART2" is first named) instead of its second occurrence
+    (Section III-G); also changed "Receiver-Transmitter" to "Receiver/Transmitter" to
+    match the standard vendor convention (parallel to UART's own expansion nearby).
+  - **Comment 12 (equation centering) fixed**: `eqn()` now uses a real center tab stop
+    for the equation itself plus a right tab stop for its number, matching the actual
+    IEEE template spec, instead of a left-aligned equation with only the number
+    tabbed over. Applies to all three equations (Ns, slip, load_kg).
+  - **Comment 13 (Table XIV reorganization) - judgment call, flagged for David to
+    confirm**: the comment's wording ("baseline, then model, then servo results") most
+    plausibly maps to the overall Results section ordering, which already matches that
+    sequence (V-A Baseline, V-B Model, V-C Validation incl. SERVO) - no section-level
+    change was needed. Read instead as being about Table XIV's own column order
+    (SERVO/Calib.), which has been swapped to Calib./SERVO so the original baseline
+    column reads first. Noted here since the comment genuinely supports either reading
+    and only the table-level interpretation was acted on.
+  - **Comment 10 (Section III-D placement) - kept, not moved**: re-examined Section
+    III's A-G order with fresh eyes. Current order already splits cleanly into two
+    halves (A/B/C = physical system: overview, VFD/motor, mechanical rig; D/E/F/G =
+    communication/software/data chain starting with RS-485), which is a coherent
+    structure, not a misplacement. The visual "out of place" impression is more likely
+    the page-break seam right at the D heading (same family of issue Rev 12 already
+    fixed the root cause of) - checked the rendered PDF at that transition and found
+    nothing broken, just an ordinary page break. Flagged, not reordered; easy to revisit
+    if David still feels it's wrong after seeing the next full revision.
+  - **Comments 0, 1, 3, 4, 5, 6 all applied**: "or load cell" removed from the
+    Introduction's torque-transducer sentence; the Related Work paragraph's "since the
+    control loop...is not accessible" clause removed; "every" dropped from "Table I
+    identifies every major component" (now plural "components"); Table I's Model/Part
+    No. column given real "/" splits where an actual model-line name is documented
+    (DURApulse/GS23-21P0, Nucleo/F401RE) - left the Lucas Nülle and QWORK rows alone
+    since no separate model-line name is documented for them, to avoid fabricating one;
+    the 3-phase paragraph's "no separate starting circuitry or capacitor is needed"
+    clause removed, plus one more instance of the same absence-of-need pattern found
+    and cut (Section IV-C's "needs no empirical justification" aside) - everything else
+    matching a superficial "need"/"necessary" search was judged load-bearing (e.g. the
+    dynamic-braking explanation, the no-interpolation/no-extrapolation prediction
+    rule, the zero-floor justification) and left in place, each with reasoning noted.
+  - **Build/verify**: rebuilt and rendered to PDF for an internal check (not a new
+    numbered revision) - 11 pages, clean two-column layout, equations now genuinely
+    centered, BOM/Table XIV/Fig. 3 changes all visually confirmed.
+  - Not yet addressed in this batch: David said more comments are still coming before
+    Rev 15 is cut.
 
 - **Rev 14: implemented the external technical/editorial audit's "comply" items** —
   David forwarded a detailed outside review of Rev 12 (30 numbered technical findings
