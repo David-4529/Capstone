@@ -141,11 +141,18 @@ bucket = arrayfun(nearest_target, freq_hz);
 fig = figure('Visible', 'off', 'Position', [0 0 1000 380]);
 axis([0 10 0 3.6]); axis off; hold on;
 box_h = 1.2;
+% Multi-line labels use a cell array of lines (one line per cell), not an
+% embedded "\n" - that works unchanged in both Octave and MATLAB's text()/
+% rectangle() renderers, unlike a literal "\n" character or escape sequence,
+% whose interpretation differs between Octave's gnuplot backend and MATLAB's
+% own renderer (confirmed failing both ways: real MATLAB rejects "\n" inside a
+% plain-quoted string passed to its tex interpreter; Octave's gnuplot backend
+% rejects an actual embedded newline character once put there instead).
 boxes = {
-  {0.3, 'PC Logger\n(operator HMI)', [0.88 0.88 0.88]}, ...
-  {2.5, 'STM32\nNucleo-F401RE', [0.65 0.65 0.65]}, ...
-  {4.7, 'RS-485\nTransceiver', [0.78 0.78 0.78]}, ...
-  {6.6, 'VFD\n(DURApulse\nGS23-21P0)', [0.65 0.65 0.65]}, ...
+  {0.3, {'PC Logger', '(operator HMI)'}, [0.88 0.88 0.88]}, ...
+  {2.5, {'STM32', 'Nucleo-F401RE'}, [0.65 0.65 0.65]}, ...
+  {4.7, {'RS-485', 'Transceiver'}, [0.78 0.78 0.78]}, ...
+  {6.6, {'VFD', '(DURApulse', 'GS23-21P0)'}, [0.65 0.65 0.65]}, ...
   {8.6, 'Motor + Load', [0.88 0.88 0.88]}
 };
 box_w = 1.7;
@@ -165,11 +172,11 @@ for i = 1:numel(boxes)-1
   line([x2-0.15 x2], [y-0.08 y], 'Color', 'k', 'LineWidth', 1.5);
 end
 text(centers(1), 2.75, 'USB', 'HorizontalAlignment', 'center', 'FontSize', 9);
-text(centers(2)+1.1, 2.75, 'UART +\nDE/RE', 'HorizontalAlignment', 'center', 'FontSize', 9);
-text(centers(3)+0.95, 2.75, 'RS-485\n(A/B)', 'HorizontalAlignment', 'center', 'FontSize', 9);
-text(centers(4)+1.0, 2.75, 'U/V/W\n3-phase', 'HorizontalAlignment', 'center', 'FontSize', 9);
+text(centers(2)+1.1, 2.75, {'UART +', 'DE/RE'}, 'HorizontalAlignment', 'center', 'FontSize', 9);
+text(centers(3)+0.95, 2.75, {'RS-485', '(A/B)'}, 'HorizontalAlignment', 'center', 'FontSize', 9);
+text(centers(4)+1.0, 2.75, {'U/V/W', '3-phase'}, 'HorizontalAlignment', 'center', 'FontSize', 9);
 rectangle('Position', [7.3, 0.05, 1.7, 0.75], 'FaceColor', [0.95 0.95 0.95], 'LineStyle', '--', 'LineWidth', 1);
-text(8.15, 0.42, 'Hanging scale\n(manual, cross-check)', 'HorizontalAlignment', 'center', 'FontSize', 8);
+text(8.15, 0.42, {'Hanging scale', '(manual, cross-check)'}, 'HorizontalAlignment', 'center', 'FontSize', 8);
 line([8.15 8.15], [0.8 1.2], 'Color', 'k', 'LineStyle', '--', 'LineWidth', 1);
 saveas(fig, fullfile(OUT_DIR, 'fig01_block_diagram.png'));
 close(fig);
@@ -184,11 +191,11 @@ axis([0 10 0 5]); axis off; hold on;
 
 % Three boxes: VFD RJ45, RS-485 transceiver module, STM32 Nucleo
 rectangle('Position', [0.3, 1.6, 2.3, 1.8], 'FaceColor', [0.65 0.65 0.65], 'LineWidth', 1.5);
-text(1.45, 3.0, 'VFD RJ45\n(RS-485 port)', 'HorizontalAlignment', 'center', 'FontWeight', 'bold', 'FontSize', 13);
+text(1.45, 3.0, {'VFD RJ45', '(RS-485 port)'}, 'HorizontalAlignment', 'center', 'FontWeight', 'bold', 'FontSize', 13);
 rectangle('Position', [3.85, 1.0, 2.3, 3.0], 'FaceColor', [0.78 0.78 0.78], 'LineWidth', 1.5);
-text(5.0, 3.65, 'RS-485\nTransceiver', 'HorizontalAlignment', 'center', 'FontWeight', 'bold', 'FontSize', 13);
+text(5.0, 3.65, {'RS-485', 'Transceiver'}, 'HorizontalAlignment', 'center', 'FontWeight', 'bold', 'FontSize', 13);
 rectangle('Position', [7.4, 1.6, 2.3, 1.8], 'FaceColor', [0.65 0.65 0.65], 'LineWidth', 1.5);
-text(8.55, 3.0, 'STM32\nNucleo-F401RE', 'HorizontalAlignment', 'center', 'FontWeight', 'bold', 'FontSize', 13);
+text(8.55, 3.0, {'STM32', 'Nucleo-F401RE'}, 'HorizontalAlignment', 'center', 'FontWeight', 'bold', 'FontSize', 13);
 
 % VFD <-> transceiver pin pairs (Table III). Signal names only, no wire colors -
 % colors are documented separately in docs/wiring.md for anyone re-wiring it;
@@ -324,7 +331,10 @@ close(fig);
 % just replot the same numbers, so they are transcribed here with the script
 % cited as the reproducible source.
 % ============================================================================
-model_forms = {'per-freq\n(deployed)', 'current+freq\n(linear)', '+ interaction\nterm', '+ quadratic\nfreq', 'full\n(all terms)'};
+% Single-line labels here, not multi-line: axis XTickLabel multi-line support
+% is unreliable across Octave/MATLAB even using a cell-of-lines (unlike
+% text()/rectangle() labels elsewhere in this script, which do support it).
+model_forms = {'per-freq (deployed)', 'current+freq (linear)', '+ interaction term', '+ quadratic freq', 'full (all terms)'};
 mape = [31.5, 52.0, 56.8, 56.5, 61.7];
 is_deployed = [true, false, false, false, false];
 
