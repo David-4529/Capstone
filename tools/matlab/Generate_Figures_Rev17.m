@@ -1,4 +1,4 @@
-% Generate_Figures.m  (Rev 17)
+% Generate_Figures_Rev17.m
 % All figures black/white/grayscale only - datasets distinguished by marker
 % shape and line style, not color, per IEEE black-and-white formatting requirement.
 %
@@ -6,9 +6,9 @@
 % Single script, regenerates every figure in the paper/deck directly from logged data.
 %
 % Run from the repo root (or edit RESULTS_GLOB below):
-%   octave tools/matlab/Generate_Figures.m
+%   octave tools/matlab/Generate_Figures_Rev17.m
 % or in MATLAB:
-%   Generate_Figures
+%   Generate_Figures_Rev17
 %
 % Reads:  results/*/analysis/groups.csv   (written by tools/logger analysis scripts -
 %                                           one row per freq/direction/weight, already
