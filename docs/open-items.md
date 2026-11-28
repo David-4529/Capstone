@@ -16,7 +16,7 @@ this file, which is not a backup. That must never happen again. These rules fix 
       that exact filename, so it is never renamed); a readable, Rev-numbered copy
       is also kept at `docs/paper/Sensorless_Load_Estimation_STM32_Firmware_Rev17.txt`.
    4. The MATLAB code for all the IEEE paper / PowerPoint presentation graphs -
-      `tools/matlab/Generate_Figures_Rev17.m` (plus the figures it writes to
+      `tools/matlab/Generate_Figures_Rev18.m` (plus the figures it writes to
       `tools/matlab/figures/figNN_*.png`, covered by rule 5 below).
    5. The lab manual - not yet built.
    6. The lab manual answer key - not yet built.

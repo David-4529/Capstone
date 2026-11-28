@@ -1,19 +1,18 @@
-% Generate_Figures_Rev17.m
+% Generate_Figures_Rev18.m
 % All figures black/white/grayscale only - datasets distinguished by marker
 % shape and line style, not color, per IEEE black-and-white formatting requirement.
 %
 % Sensorless Load Estimation via Motor Current on a Low-Cost VFD-Driven Induction Motor
-% Single script, regenerates every figure in the paper/deck directly from logged data.
+% Single, fully standalone script - no external data file needed (see the embedded
+% DATA table below; this fixed repeated "no groups.csv found" failures when the
+% script was shared on its own, away from the rest of the repo).
 %
-% Run from the repo root (or edit RESULTS_GLOB below):
-%   octave tools/matlab/Generate_Figures_Rev17.m
+% Run this single file directly, from anywhere:
+%   octave Generate_Figures_Rev18.m
 % or in MATLAB:
-%   Generate_Figures_Rev17
+%   Generate_Figures_Rev18
 %
-% Reads:  results/*/analysis/groups.csv   (written by tools/logger analysis scripts -
-%                                           one row per freq/direction/weight, already
-%                                           averaged over each run's settled plateau)
-% Writes: tools/matlab/figures/*.png
+% Writes: a "figures" subfolder next to wherever this script itself is saved.
 %
 % STANDING RULE: every output filename below is prefixed with its real, current
 % paper figure number (figNN_description.png) and every section comment below
@@ -85,56 +84,52 @@ set(0, 'DefaultLineLineWidth', 2.2);
 set(0, 'DefaultAxesLineWidth', 1.1);
 
 THIS_DIR = fileparts(mfilename('fullpath'));
-REPO_ROOT = fileparts(fileparts(THIS_DIR)); % tools/matlab -> tools -> repo root
-RESULTS_GLOB = fullfile(REPO_ROOT, 'results', '*', 'analysis', 'groups.csv');
 OUT_DIR = fullfile(THIS_DIR, 'figures');
 if ~exist(OUT_DIR, 'dir'); mkdir(OUT_DIR); end
 
 TARGET_FREQS = [1.39, 2.44, 4.85, 6.36];
 POLE_COUNT = 4;
 
-% dir() (not glob(), which is Octave-only) supports a wildcard path component in
-% both Octave and MATLAB, so this line works unchanged in either.
-found = dir(RESULTS_GLOB);
-files = cell(numel(found), 1);
-for i = 1:numel(found)
-  files{i} = fullfile(found(i).folder, found(i).name);
-end
-if isempty(files)
-  error('No groups.csv files found under %s - run from the repo root.', RESULTS_GLOB);
-end
-fprintf('Found %d groups.csv file(s):\n', numel(files));
-for i = 1:numel(files); fprintf('  %s\n', files{i}); end
-
-% ---- Load every row from every session into one flat table ----
-freq_hz = []; direction = {}; total_kg = []; current_mean = []; slip_mean = [];
-
-for fi = 1:numel(files)
-  fid = fopen(files{fi}, 'r');
-  header = fgetl(fid); %#ok<NASGU> - freq_hz,direction,total_kg,n,slip_mean,...
-  while true
-    csv_line = fgetl(fid);
-    if ~ischar(csv_line); break; end
-    % collapsedelimiters must be false - several rows have blank slip_* fields
-    % (e.g. results/2026-10-24_resistorx2/analysis/groups.csv), and the default
-    % (true) silently merges consecutive commas, shifting every later column.
-    parts = strsplit(csv_line, ',', 'collapsedelimiters', false);
-    if numel(parts) < 11; continue; end
-    f = str2double(parts{1});
-    d = parts{2};
-    w = str2double(parts{3});
-    sm = str2double(parts{5});
-    cm = str2double(parts{9});
-    if isnan(f) || isnan(w); continue; end
-    freq_hz(end+1) = f; %#ok<AGROW>
-    direction{end+1} = d; %#ok<AGROW>
-    total_kg(end+1) = w; %#ok<AGROW>
-    slip_mean(end+1) = sm; %#ok<AGROW>
-    current_mean(end+1) = cm; %#ok<AGROW>
-  end
-  fclose(fid);
-end
-fprintf('Loaded %d total freq/direction/weight rows.\n', numel(freq_hz));
+% ---- Real calibration data, embedded directly (no external file needed) ----
+% This script used to read results/*/analysis/groups.csv at runtime, which broke
+% repeatedly once the script was shared as a standalone file (wrong relative path,
+% partial zip extraction, etc. - three separate failures on David's machine). Every
+% row below is transcribed verbatim from those same real, committed CSV files
+% (every "up"-direction row across all 5 real test sessions - "down" direction is
+% never used by anything in this script, so it is not included here either) -
+% this is the identical real data, just inlined instead of parsed from a file, so
+% the script now has zero external dependencies and cannot fail this way again.
+% Columns: freq_hz, direction, total_kg, current_mean, slip_mean.
+% Source: results/2026-10-05/analysis/groups.csv (no-load baseline)
+%         results/2026-10-07/analysis/groups.csv (metal housing, 1.46 kg)
+%         results/2026-10-07_plastic_housing/analysis/groups.csv (0.32 kg)
+%         results/2026-10-07_pliers/analysis/groups.csv (0.58 kg)
+%         results/2026-10-24_resistorx2/analysis/groups.csv (Resistor 2, 0.82 kg)
+DATA = {
+  1.39, 'up', 0.00, 0.4760, 0.2703;
+  2.45, 'up', 0.00, 0.4660, 0.1820;
+  4.85, 'up', 0.00, 0.8140, 0.0543;
+  6.36, 'up', 0.00, 0.7040, 0.0556;
+  2.46, 'up', 1.46, 0.6187, 0.3154;
+  4.85, 'up', 1.46, 0.9333, 0.1036;
+  6.36, 'up', 1.46, 0.8370, 0.0901;
+  1.39, 'up', 0.32, 0.5155, 0.3269;
+  2.44, 'up', 0.32, 0.5130, 0.2271;
+  4.85, 'up', 0.32, 0.8363, 0.0681;
+  6.37, 'up', 0.32, 0.7440, 0.0682;
+  1.30, 'up', 0.58, 0.5425, 0.3606;
+  2.43, 'up', 0.58, 0.5337, 0.2723;
+  4.86, 'up', 0.58, 0.8732, 0.0663;
+  6.36, 'up', 0.58, 0.7603, 0.0672;
+  2.90, 'up', 0.82, 0.5540, NaN;
+  4.66, 'up', 0.82, 0.7980, NaN;
+};
+freq_hz = cell2mat(DATA(:,1))';
+direction = DATA(:,2)';
+total_kg = cell2mat(DATA(:,3))';
+current_mean = cell2mat(DATA(:,4))';
+slip_mean = cell2mat(DATA(:,5))';
+fprintf('Loaded %d embedded freq/direction/weight rows (no external file read).\n', numel(freq_hz));
 
 nearest_target = @(f) TARGET_FREQS(find(abs(TARGET_FREQS - f) == min(abs(TARGET_FREQS - f)), 1));
 bucket = arrayfun(nearest_target, freq_hz);
