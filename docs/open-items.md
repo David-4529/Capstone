@@ -10,7 +10,7 @@ this file, which is not a backup. That must never happen again. These rules fix 
 1. **The seven main deliverables, named by David on 2026-11-28, are**:
    1. The IEEE paper - `docs/paper/Sensorless_Load_Estimation_IEEE_Rev17.docx`.
    2. The PowerPoint slide presentation (the major deck) -
-      `docs/paper/Sensorless_Load_Estimation_Deck_Rev17.pptx`.
+      `docs/paper/Sensorless_Load_Estimation_Deck_Rev18.pptx`.
    3. The STM32 code - the real build source stays
       `firmware/stm32/Core/Src/main.c` (STM32CubeIDE's project config depends on
       that exact filename, so it is never renamed); a readable, Rev-numbered copy
@@ -18,8 +18,10 @@ this file, which is not a backup. That must never happen again. These rules fix 
    4. The MATLAB code for all the IEEE paper / PowerPoint presentation graphs -
       `tools/matlab/Generate_Figures_Rev18.m` (plus the figures it writes to
       `tools/matlab/figures/figNN_*.png`, covered by rule 5 below).
-   5. The lab manual - not yet built.
-   6. The lab manual answer key - not yet built.
+   5. The lab manual (student edition) -
+      `docs/paper/Sensorless_Load_Estimation_Lab_Manual_Rev18.docx` (built).
+   6. The lab manual answer key (instructor edition) - not yet built; paused on
+      David's explicit instruction (2026-11-28) to hold off on it for now.
    7. The PowerPoint slide deck that keeps the native flowchart and every other
       diagram/table used throughout the IEEE paper and the major presentation, as
       individually movable native shapes (the Diagrams & Tables Export deck) -
@@ -41,7 +43,7 @@ this file, which is not a backup. That must never happen again. These rules fix 
    a defect to be found and fixed immediately, not carried forward.
 4. **Every committed deliverable file is named with its revision number**
    (`Sensorless_Load_Estimation_IEEE_Rev17.docx`,
-   `Sensorless_Load_Estimation_Deck_Rev17.pptx`,
+   `Sensorless_Load_Estimation_Deck_Rev18.pptx`,
    `Sensorless_Load_Estimation_Diagrams_Tables_Export_Rev17.pptx`,
    `Sensorless_Load_Estimation_STM32_Firmware_Rev17.txt`), all under `docs/paper/`.
    A new revision is committed as a new, renamed file (`git mv` plus the content
@@ -63,9 +65,12 @@ end-to-end on real hardware (STM32 Nucleo-F401RE, RS-485 transceiver to the VFD,
 logger). What remains falls into two groups: things that need an action from David
 (Section A) and lower-priority/deferred work (Section B). Every item below is cross-
 checked against the current paper (`Sensorless_Load_Estimation_IEEE_Rev17.docx`). The
-major presentation deck is synced to Rev 17 (see Resolved below); the Diagrams & Tables
-Export deck is still at Rev 13 and the lab manual is not yet built - the 11/6
-progress-meeting deck was lost to a container reset and David said not to worry about
+major presentation deck is at Rev 18 (visually rebuilt against the official UNCC
+templates and David's presentation-requirements spec; see Resolved below); the
+Diagrams & Tables Export deck is still on its Rev 17 content and awaiting the same
+visual rebuild; the lab manual (student edition) is in progress and its answer key is
+paused per David's instruction - the 11/6 progress-meeting deck was lost to a
+container reset and David said not to worry about
 replacing it. Note:
 David has said the .docx is the only deliverable he wants going forward for the paper -
 the PDF is still generated internally for page-render visual verification, but is no
@@ -291,6 +296,21 @@ building the model. Staying logged here as optional, not blocking, pending David
 call on whether to do even the one-sentence version.
 
 ## Resolved
+
+- **Lab manual (student edition) built** — first draft of deliverable #5, never built
+  before this. `docs/paper/Sensorless_Load_Estimation_Lab_Manual_Rev18.docx`: learning
+  objectives; background theory (Ns = 120f/P, slip, the deployed current-based
+  model); real equipment list (paper Table I); real safety notes (P01.10 cable-travel
+  cap, three-phase/DC-bus hazards, the 1.46 kg belt-slip load ceiling); the real GPIO
+  pinout (PA9/PA10 USART1 to the VFD, PA8 RS485_DE_RE, PA5 status LED, PA2/PA3 USART2
+  to the PC) and serial command interface (TEST/STOP/RPM/LOAD/VFDCHECK/FREQ/CURRENT/
+  DEBUG), both pulled from `firmware/stm32/README.md` and `main.c` directly, not
+  guessed; a step-by-step calibration procedure; a blank data worksheet; analysis
+  questions with no answers included. Does not match the referenced Summer 2026 VFD
+  lab manual's specific format - that document was never supplied to this project, so
+  a standard academic lab-exercise format was used instead; flagging this rather than
+  guessing at an unseen format. The answer key (deliverable #6) is intentionally not
+  started - David said to hold off on it for now.
 
 - **Rev 16 (second independent 45-item audit of Rev 15 + an independently-discovered
   root-cause finding of my own)** — David forwarded a second, independent technical
