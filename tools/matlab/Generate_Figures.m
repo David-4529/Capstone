@@ -1,14 +1,14 @@
-% generate_figures.m  (Rev 8)
+% Generate_Figures.m  (Rev 17)
 % All figures black/white/grayscale only - datasets distinguished by marker
 % shape and line style, not color, per IEEE black-and-white formatting requirement.
 %
-% Sensorless Load Estimation Using Motor Slip on a Low-Cost VFD-Driven Induction Motor
+% Sensorless Load Estimation via Motor Current on a Low-Cost VFD-Driven Induction Motor
 % Single script, regenerates every figure in the paper/deck directly from logged data.
 %
 % Run from the repo root (or edit RESULTS_GLOB below):
-%   octave tools/matlab/generate_figures.m
+%   octave tools/matlab/Generate_Figures.m
 % or in MATLAB:
-%   generate_figures
+%   Generate_Figures
 %
 % Reads:  results/*/analysis/groups.csv   (written by tools/logger analysis scripts -
 %                                           one row per freq/direction/weight, already
