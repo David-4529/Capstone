@@ -93,12 +93,18 @@ if ~exist(OUT_DIR, 'dir'); mkdir(OUT_DIR); end
 TARGET_FREQS = [1.39, 2.44, 4.85, 6.36];
 POLE_COUNT = 4;
 
-files = glob(RESULTS_GLOB);
+% dir() (not glob(), which is Octave-only) supports a wildcard path component in
+% both Octave and MATLAB, so this line works unchanged in either.
+found = dir(RESULTS_GLOB);
+files = cell(numel(found), 1);
+for i = 1:numel(found)
+  files{i} = fullfile(found(i).folder, found(i).name);
+end
 if isempty(files)
   error('No groups.csv files found under %s - run from the repo root.', RESULTS_GLOB);
 end
-printf('Found %d groups.csv file(s):\n', numel(files));
-for i = 1:numel(files); printf('  %s\n', files{i}); end
+fprintf('Found %d groups.csv file(s):\n', numel(files));
+for i = 1:numel(files); fprintf('  %s\n', files{i}); end
 
 % ---- Load every row from every session into one flat table ----
 freq_hz = []; direction = {}; total_kg = []; current_mean = []; slip_mean = [];
@@ -128,7 +134,7 @@ for fi = 1:numel(files)
   end
   fclose(fid);
 end
-printf('Loaded %d total freq/direction/weight rows.\n', numel(freq_hz));
+fprintf('Loaded %d total freq/direction/weight rows.\n', numel(freq_hz));
 
 nearest_target = @(f) TARGET_FREQS(find(abs(TARGET_FREQS - f) == min(abs(TARGET_FREQS - f)), 1));
 bucket = arrayfun(nearest_target, freq_hz);
@@ -275,7 +281,7 @@ for k = 1:numel(TARGET_FREQS)
   plot(x, y, markers{k}, 'MarkerSize', 10, 'MarkerFaceColor', facecolors{k}, 'MarkerEdgeColor', 'k', ...
        'DisplayName', sprintf('%.2f Hz data', tf));
   plot(xs, ys, linestyles{k}, 'Color', 'k', 'LineWidth', 1.5, 'HandleVisibility', 'off');
-  printf('Fit %.2f Hz: load_kg = %.3f * current_A + %.3f  (n=%d)\n', tf, p(1), p(2), numel(x));
+  fprintf('Fit %.2f Hz: load_kg = %.3f * current_A + %.3f  (n=%d)\n', tf, p(1), p(2), numel(x));
 end
 xlabel('Output Current (A)'); ylabel('Load (kg)');
 title('Calibrated Model: load_{kg} = slope \times current_A + intercept (up direction)');
@@ -397,4 +403,4 @@ title('Torque vs. Frequency'); legend('Location', 'southeast'); grid on;
 saveas(fig, fullfile(OUT_DIR, 'fig13_torque_validation_torque.png'));
 close(fig);
 
-printf('\nAll figures written to %s\n', OUT_DIR);
+fprintf('\nAll figures written to %s\n', OUT_DIR);
