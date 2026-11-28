@@ -25,7 +25,7 @@ this file, which is not a backup. That must never happen again. These rules fix 
    7. The PowerPoint slide deck that keeps the native flowchart and every other
       diagram/table used throughout the IEEE paper and the major presentation, as
       individually movable native shapes (the Diagrams & Tables Export deck) -
-      `docs/paper/Sensorless_Load_Estimation_Diagrams_Tables_Export_Rev17.pptx`.
+      `docs/paper/Sensorless_Load_Estimation_Diagrams_Tables_Export_Rev18.pptx`.
 
    (The 11/6 progress-meeting deck was a deliverable earlier in this project but was
    lost to a container reset; David said not to worry about replacing it, so it is
@@ -44,7 +44,7 @@ this file, which is not a backup. That must never happen again. These rules fix 
 4. **Every committed deliverable file is named with its revision number**
    (`Sensorless_Load_Estimation_IEEE_Rev17.docx`,
    `Sensorless_Load_Estimation_Deck_Rev18.pptx`,
-   `Sensorless_Load_Estimation_Diagrams_Tables_Export_Rev17.pptx`,
+   `Sensorless_Load_Estimation_Diagrams_Tables_Export_Rev18.pptx`,
    `Sensorless_Load_Estimation_STM32_Firmware_Rev17.txt`), all under `docs/paper/`.
    A new revision is committed as a new, renamed file (`git mv` plus the content
    change) - never overwritten in place under the old revision's name, since that
@@ -65,11 +65,11 @@ end-to-end on real hardware (STM32 Nucleo-F401RE, RS-485 transceiver to the VFD,
 logger). What remains falls into two groups: things that need an action from David
 (Section A) and lower-priority/deferred work (Section B). Every item below is cross-
 checked against the current paper (`Sensorless_Load_Estimation_IEEE_Rev17.docx`). The
-major presentation deck is at Rev 18 (visually rebuilt against the official UNCC
-templates and David's presentation-requirements spec; see Resolved below); the
-Diagrams & Tables Export deck is still on its Rev 17 content and awaiting the same
-visual rebuild; the lab manual (student edition) is in progress and its answer key is
-paused per David's instruction - the 11/6 progress-meeting deck was lost to a
+major presentation deck and the Diagrams & Tables Export deck are both at Rev 18
+(both visually rebuilt against the official UNCC templates and David's
+presentation-requirements spec; see Resolved below); the lab manual (student edition)
+is in progress and its answer key is paused per David's instruction - the 11/6
+progress-meeting deck was lost to a
 container reset and David said not to worry about
 replacing it. Note:
 David has said the .docx is the only deliverable he wants going forward for the paper -
